@@ -1,3 +1,8 @@
+:root {
+  --canvas-default-height: 150px;
+  --trex-config-width: 44px;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -9,12 +14,15 @@
   box-sizing: border-box;
 }
 
-canvas {
-  border: 1px solid #999;
-}
-
 #offline-resources {
   display: none;
+}
+
+.offline .runner-container {
+  position: relative;
+  width: var(--trex-config-width);
+  height: var(--canvas-default-height);
+  overflow: hidden;
 }
 
 .offline .runner-canvas {
@@ -23,6 +31,6 @@ canvas {
   top: 0;
   height: 150px;
   max-width: 600px;
-  opacity: 1;
   overflow: hidden;
+  opacity: 1;
 }

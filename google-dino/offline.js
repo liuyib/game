@@ -39,7 +39,7 @@
     this.time = 0;
     this.currentSpeed = this.config.SPEED;
 
-    this.activated  = false; // 游戏是否被激活
+    this.activated  = false; // 游戏彩蛋是否被激活
     this.playing = false;    // 游戏是否进行中
     this.crashed = false;    // 小恐龙是否碰到了障碍物
     this.paused = false      // 游戏是否暂停
@@ -79,6 +79,7 @@
   };
 
   Runner.events = {
+    ANIMATION_END: 'webkitAnimationEnd',
     KEYDOWN: 'keydown',
     KEYUP: 'keyup',
     LOAD: 'load',
@@ -131,12 +132,42 @@
       document.removeEventListener(Runner.events.KEYUP, this);
     },
     /**
-     * 游戏被激活时的开场过渡动画
+     * 当页面失焦时，暂停游戏
+     */
+    onVisibilityChange: function (e) {
+      log(document.hidden);
+      log(document.webkitHidden);
+      log(e.type);
+      log(document.visibilityState);
+
+      if (document.hidden || document.webkitHidden || e.type == 'blur' ||
+        document.visibilityState != 'visible') {
+        this.stop();
+      } else if (!this.crashed) {
+        this.play();
+      }
+    },
+    /**
+     * 更新游戏为开始状态
+     */
+    startGame: function () {
+      this.runningTime = 0;      // 运行时间
+      this.playingIntro = false; // 开场动画结束
+      this.containerEl.style.webkitAnimation = '';
+
+      window.addEventListener(Runner.events.BLUR,
+        this.onVisibilityChange.bind(this));
+
+      window.addEventListener(Runner.events.FOCUS,
+        this.onVisibilityChange.bind(this));
+    },
+    /**
+     * 游戏被激活时的开场动画
      * 用于将 canvas 的宽度调整到最大
      */
     playIntro: function () {
       if (!this.activated && !this.crashed) {
-        this.playingIntro = true; // 正在执行过渡动画
+        this.playingIntro = true; // 正在开场动画
 
         // 定义 CSS 动画关键帧
         var keyframes = '@-webkit-keyframes intro { ' +
@@ -146,7 +177,17 @@
         // 将动画关键帧插入页面中的第一个样式表
         document.styleSheets[0].insertRule(keyframes, 0);
 
+        this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
+        this.containerEl.style.width = this.dimensions.WIDTH + 'px';
 
+        // 监听动画。当触发结束事件时，设置游戏为开始状态
+        this.containerEl.addEventListener(Runner.events.ANIMATION_END,
+          this.startGame.bind(this));
+
+        this.setPlayStatus(true); // 设置游戏为进行状态
+        this.activated = true;    // 游戏彩蛋被激活
+      } else if (this.crashed) {
+        this.restart();
       }
     },
     setPlayStatus: function (isPlaying) {
@@ -191,10 +232,18 @@
 
       if (this.playing) {
         this.clearCanvas();
+
+        if (!this.playingIntro) {
+          this.playIntro(); // 执行开场动画
+        }
         
-        // 更新 Horizon
-        // deltaTime = !this.activated ? 0 : deltaTime;
-        this.horizon.update(deltaTime, this.currentSpeed);
+        // 直到开场动画结束才移动地面
+        if (this.playingIntro) {
+          this.horizon.update(0, this.currentSpeed);
+        } else {
+          deltaTime = !this.activated ? 0 : deltaTime;
+          this.horizon.update(deltaTime, this.currentSpeed);
+        }
       }
 
       if (this.playing) {
@@ -211,7 +260,7 @@
             this.update();
           }
           
-          // this.activated = true;
+          this.activated = true;
         }
       }      
     },
@@ -385,5 +434,11 @@
     update: function (deltaTime, currentSpeed) {
       this.horizonLine.update(deltaTime, currentSpeed);
     },
+  };
+
+  function Trex() {}
+
+  Trex.config = {
+    WIDTH: 44,
   };
 })();
