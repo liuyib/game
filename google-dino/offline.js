@@ -3,26 +3,6 @@
 
   var log = console.log.bind(console);
 
-  /**
-   * 生成 canvas 元素
-   * @param {HTMLElement} container canva 的容器
-   * @param {Number} width canvas 的宽度
-   * @param {Number} height canvas 的高度
-   * @param {String} optClassName 给 canvas 添加的类名（可选）
-   * @return {HTMLCanvasElement}
-   */
-  function createCanvas(container, width, height, optClassName) {
-    var canvas = document.createElement('canvas');
-    canvas.className = optClassName
-      ? optClassName + ' ' + Runner.classes.CANVAS
-      : Runner.classes.CANVAS;
-    canvas.width = width;
-    canvas.height = height;
-    container.appendChild(canvas);
-
-    return canvas;
-  }
-
   function Runner(containerSelector, optConfig) {
     // 获取游戏的 “根” DOM 节点
     this.outerContainerEl = document.querySelector(containerSelector);
@@ -130,6 +110,26 @@
       return performance.now();
     },
   };
+
+  /**
+   * 生成 canvas 元素
+   * @param {HTMLElement} container canva 的容器
+   * @param {Number} width canvas 的宽度
+   * @param {Number} height canvas 的高度
+   * @param {String} optClassName 给 canvas 添加的类名（可选）
+   * @return {HTMLCanvasElement}
+   */
+  function createCanvas(container, width, height, optClassName) {
+    var canvas = document.createElement('canvas');
+    canvas.className = optClassName
+      ? optClassName + ' ' + Runner.classes.CANVAS
+      : Runner.classes.CANVAS;
+    canvas.width = width;
+    canvas.height = height;
+    container.appendChild(canvas);
+
+    return canvas;
+  }
 
   function HorizonLine(canvas, spritePos) {
     this.canvas = canvas;
