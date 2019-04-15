@@ -1,6 +1,7 @@
 :root {
   --canvas-default-height: 150px;
   --trex-config-width: 44px;
+  --arcade-mode-initial-top-position: 35px;
 }
 
 * {
@@ -14,15 +15,25 @@
   box-sizing: border-box;
 }
 
+#chrome-dino {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
 #offline-resources {
   display: none;
 }
 
 .offline .runner-container {
-  position: relative;
-  width: var(--trex-config-width);
+  position: absolute;
+  top: var(--arcade-mode-initial-top-position);
+  width: 100%;
+  /* width: var(--trex-config-width); */
+  max-width: 600px;
   height: var(--canvas-default-height);
   overflow: hidden;
+  direction: ltr;
 }
 
 .offline .runner-canvas {
@@ -33,4 +44,21 @@
   max-width: 600px;
   overflow: hidden;
   opacity: 1;
+}
+
+.arcade-mode,
+.arcade-mode .runner-container,
+.arcade-mode .runner-canvas {
+  image-rendering: pixelated;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.arcade-mode .runner-container {
+  left: 0;
+  right: 0;
+  margin: auto;
+  transform-origin: top center;
+  transition: transform 250ms cubic-bezier(0.4, 0.0, 1, 1) .4s;
+  z-index: 2;
 }
