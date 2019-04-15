@@ -92,6 +92,12 @@
 
       // 将游戏添加到页面中
       this.outerContainerEl.appendChild(this.containerEl);
+
+      // 开始监听用户动作
+      this.startListening();
+
+      // 更新 canvas
+      this.update();
     },
     loadImages() {
       this.spritePos = Runner.spriteDefinition.LDPI; // 获取雪碧图中图片的坐标信息
@@ -106,8 +112,36 @@
           this.init.bind(this));
       }
     },
+    // 监听按键事件
+    startListening: function () {
+      document.addEventListener(Runner.events.KEYDOWN, this);
+      document.addEventListener(Runner.events.KEYUP, this);
+    },
+    /**
+     * 更新游戏帧并进行下一次更新
+     */
+    update: function () {
+      // this.updatePending = false; // 等待更新
+
+      var now = this.getTimeStamp();
+      var deltaTime = now - (this.time || now);
+
+      this.time = now;
+      this.clearCanvas();
+
+      this.horizon.update(deltaTime, this.currentSpeed);
+
+      this.scheduleNextUpdate();
+    },
     getTimeStamp: function () {
       return performance.now();
+    },
+    clearCanvas: function () {
+      this.ctx.clearRect(0, 0, this.dimensions.WIDTH,
+        this.dimensions.HEIGHT);
+    },
+    scheduleNextUpdate: function () {
+      this.raqId = requestAnimationFrame(this.update.bind(this));
     },
   };
 
@@ -183,6 +217,51 @@
         this.dimensions.WIDTH, this.dimensions.HEIGHT,
       );
     },
+    /**
+     * 更新地面
+     * @param {Number} deltaTime 间隔时间
+     * @param {Number} speed 速度
+     */
+    update: function (deltaTime, speed) {
+      // 计算地面每次移动的距离（距离 = 速度 x 时间）时间由帧率和间隔时间共同决定
+      var incre = Math.floor(speed * (FPS / 1000) * deltaTime);
+
+      if (this.xPos[0] <= 0) {
+        this.updateXPos(0, incre);
+      } else {
+        this.updateXPos(1, incre);
+      }
+      this.draw();
+    },
+    /**
+     * 更新地面的 x 坐标
+     * @param {Number} pos 地面的位置
+     * @param {Number} incre 移动距离
+     */
+    updateXPos: function (pos, incre) {
+      var line1 = pos;
+      var line2 = pos === 0 ? 1 : 0;
+
+      // 第一段地面向左移动，第二段地面随之
+      this.xPos[line1] -= incre;
+      this.xPos[line2] = this.xPos[line1] + this.dimensions.WIDTH;
+
+      // 第一段地面移出了 canvas
+      if (this.xPos[line1] <= -this.dimensions.WIDTH) {
+        // 将第一段地面放到 canvas 右侧
+        this.xPos[line1] += this.dimensions.WIDTH * 2;
+        // 此时第二段地面的 x 坐标刚好和 canvas 的 x 坐标对齐
+        this.xPos[line2] = this.xPos[line1] - this.dimensions.WIDTH;
+        // 给放到 canvas 后面的地面随机地形
+        this.sourceXPos[line1] = this.getRandomType() + this.spritePos.x;
+      }
+    },
+    /**
+     * 获取随机的地形
+     */
+    getRandomType: function () {
+      return Math.random() > this.bumpThreshold ? this.dimensions.WIDTH : 0;
+    },
   };
 
   /**
@@ -206,6 +285,9 @@
   Horizon.prototype = {
     init: function () {
       this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
+    },
+    update: function (deltaTime, currentSpeed) {
+      this.horizonLine.update(deltaTime, currentSpeed);
     },
   };
 })();
