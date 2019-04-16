@@ -4,39 +4,35 @@
   var log = console.log.bind(console);
 
   function Runner(containerSelector, optConfig) {
-    // 获取游戏的 “根” DOM 节点
+    // 获取游戏的 “根” DOM 节点，整个游戏都会输出到这个节点里
     this.outerContainerEl = document.querySelector(containerSelector);
     // canvas 的外层容器
     this.containerEl = null;
-
+  
     this.config = optConfig || Runner.config;
     this.dimensions = Runner.defaultDimensions;
-
-    // 用于计算物体位移
-    this.currentSpeed = this.config.SPEED; // 设置移动速度
-    this.time = 0;                         // 记录代码运行时间
-
-    this.activated  = false; // 游戏彩蛋是否被激活（没有被激活时，屏幕上只显示小恐龙的图片）
+  
+    this.currentSpeed = this.config.SPEED;
+    this.time = 0;           // 用于计算动画帧之间的间隔时间
+  
+    this.activated  = false; // 游戏彩蛋是否被激活（没有被激活时，游戏不会显示出来）
     this.playing = false;    // 游戏是否进行中
     this.crashed = false;    // 小恐龙是否碰到了障碍物
     this.paused = false      // 游戏是否暂停
-
+  
     // 加载雪碧图，并初始化游戏
-    // 之后的代码逻辑都会通过这个函数间接调用
     this.loadImages();
   }
 
-  // 由于 Runner 类的一些属性和方法需要全局调用
-  // 所以需要挂载到 window 对象上
   window['Runner'] = Runner;
 
   var DEFAULT_WIDTH = 600;
   var FPS = 60;
   
-  // 游戏配置参数
+  // 游戏参数配置
   Runner.config = {
     // GAP_COEFFICIENT: 0.6,
-    SPEED: 6,                              // 移动速度
+    SPEED: 6,
     ARCADE_MODE_INITIAL_TOP_POSITION: 35,  // 街机模式时，canvas 距顶部的初始距离
     ARCADE_MODE_TOP_POSITION_PERCENT: 0.1, // 街机模式时，canvas 距页面顶部的距离，占屏幕高度的百分比
   };
@@ -52,22 +48,25 @@
     ARCADE_MODE: 'arcade-mode',
     CONTAINER: 'runner-container',
     CANVAS: 'runner-canvas',
-    PLAYER: '', // 预留出的 className，用来控制 canvas 的样式
+    PLAYER: '', // 预留出的 className，可以用来自定义 canvas 的样式
   };
 
-  // 雪碧图中各个图片的坐标信息
+  // 雪碧图中小图片的坐标信息
   Runner.spriteDefinition = {
     LDPI: {
       HORIZON: {x: 2, y: 54},
+      CLOUD: {x: 86, y: 2},
     },
   };
 
+  // 游戏中用到的键盘码
   Runner.keyCodes = {
     JUMP: {'38': 1, '32': 1}, // Up, Space
     DUCK: {'40': 1},          // Down
     RESTART: {'13': 1},       // Enter
   };
 
+  // 游戏中用到的事件名称
   Runner.events = {
     ANIMATION_END: 'webkitAnimationEnd',
     KEYDOWN: 'keydown',
@@ -91,7 +90,7 @@
       this.ctx.fillStyle = '#f7f7f7';
       this.ctx.fill();
 
-      // 加载 Horizon
+      // 加载背景类 Horizon
       this.horizon = new Horizon(this.canvas, this.spritePos,
         this.dimensions, this.config.GAP_COEFFICIENT);
 
@@ -105,14 +104,14 @@
       this.update();
     },
     loadImages() {
-      this.spritePos = Runner.spriteDefinition.LDPI; // 获取雪碧图中图片的坐标信息
+      this.spritePos = Runner.spriteDefinition.LDPI;
+      // 获取雪碧图
       Runner.imageSprite = document.getElementById('offline-resources-1x');
 
       // 当图片加载完成（complete 是 DOM 中 Image 对象自带的一个属性）
       if (Runner.imageSprite.complete) {
         this.init();
-      } else {
-        // 图片没有加载完成，监听其 load 事件
+      } else { // 图片没有加载完成，监听其 load 事件
         Runner.imageSprite.addEventListener(Runner.events.LOAD,
           this.init.bind(this));
       }
@@ -144,7 +143,7 @@
         this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
         this.containerEl.style.width = this.dimensions.WIDTH + 'px';
 
-        // 监听动画。当触发结束事件时，设置游戏为开始状态
+        // 当触发 webkitAnimationEnd 事件时，执行 startGame
         this.containerEl.addEventListener(Runner.events.ANIMATION_END,
           this.startGame.bind(this));
 
@@ -155,7 +154,7 @@
       }
     },
     /**
-     * 更新游戏为开始状态
+     * 开始进行游戏
      */
     startGame: function () {
       this.setArcadeMode();      // 进入街机模式
@@ -201,14 +200,14 @@
       this.updatePending = false; // 等待更新
 
       var now = this.getTimeStamp();
-      var deltaTime = now - (this.time || now);
+      var deltaTime = Math.round(now - (this.time || now));
 
       this.time = now;
 
       if (this.playing) {
         this.clearCanvas();
 
-        // 刚开始 this.playingIntro 不存在 !this.playingIntro 为真
+        // 刚开始 this.playingIntro 未定义 !this.playingIntro 为真
         if (!this.playingIntro) {
           this.playIntro(); // 执行开场动画
         }
@@ -240,31 +239,6 @@
         this.raqId = requestAnimationFrame(this.update.bind(this));
       }
     },
-    /**
-     * 设置进入街机模式时 canvas 容器的缩放比例
-     */
-    setArcadeModeContainerScale: function () {
-      var windowHeight = window.innerHeight;
-      var scaleHeight = windowHeight / this.dimensions.HEIGHT;
-      var scaleWidth = window.innerWidth / this.dimensions.WIDTH;
-      var scale = Math.max(1, Math.min(scaleHeight, scaleWidth));
-      var scaledCanvasHeight = this.dimensions.HEIGHT * scale;
-
-      // 将 canvas 横向占满屏幕，纵向距离顶部 10% 窗口高度处
-      var translateY = Math.ceil(Math.max(0, (windowHeight - scaledCanvasHeight -
-          Runner.config.ARCADE_MODE_INITIAL_TOP_POSITION) *
-          Runner.config.ARCADE_MODE_TOP_POSITION_PERCENT)) *
-          window.devicePixelRatio;
-      this.containerEl.style.transform = 'scale(' + scale + ') translateY(' +
-          translateY + 'px)';
-    },
-    /**
-     * 开启街机模式（全屏）
-     */
-    setArcadeMode: function () {
-      document.body.classList.add(Runner.classes.ARCADE_MODE);
-      this.setArcadeModeContainerScale();
-    },
     // 用来处理 EventTarget（这里就是 Runner 类） 上发生的事件
     // 当事件被发送到 EventListener 时，浏览器就会自动调用这个方法
     handleEvent: function (e) {
@@ -293,7 +267,36 @@
     setPlayStatus: function (isPlaying) {
       this.playing = isPlaying;
     },
+    /**
+     * 设置进入街机模式时 canvas 容器的缩放比例
+     */
+    setArcadeModeContainerScale: function () {
+      var windowHeight = window.innerHeight;
+      var scaleHeight = windowHeight / this.dimensions.HEIGHT;
+      var scaleWidth = window.innerWidth / this.dimensions.WIDTH;
+      var scale = Math.max(1, Math.min(scaleHeight, scaleWidth));
+      var scaledCanvasHeight = this.dimensions.HEIGHT * scale;
+
+      // 将 canvas 横向占满屏幕，纵向距离顶部 10% 窗口高度处
+      var translateY = Math.ceil(Math.max(0, (windowHeight - scaledCanvasHeight -
+          Runner.config.ARCADE_MODE_INITIAL_TOP_POSITION) *
+          Runner.config.ARCADE_MODE_TOP_POSITION_PERCENT)) *
+          window.devicePixelRatio;
+      this.containerEl.style.transform = 'scale(' + scale + ') translateY(' +
+          translateY + 'px)';
+    },
+    /**
+     * 开启街机模式（游戏占满屏幕）
+     */
+    setArcadeMode: function () {
+      document.body.classList.add(Runner.classes.ARCADE_MODE);
+      this.setArcadeModeContainerScale();
+    },
   };
+
+  // ==========================================
+  // 工具函数
+  // ==========================================
 
   /**
    * 生成 canvas 元素
@@ -315,6 +318,18 @@
     return canvas;
   }
 
+  /**
+   * 获取 [min, max] 之间的随机数
+   * @param {Number} min 最小值
+   * @param {Number} max 最大值
+   * @return {Number}
+   */
+  function getRandomNum(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  // ==========================================
+
   function HorizonLine(canvas, spritePos) {
     this.canvas = canvas;
     this.ctx = this.canvas.getContext('2d');
@@ -334,7 +349,7 @@
   HorizonLine.dimensions = {
     WIDTH: 600,
     HEIGHT: 12,
-    YPOS: 127,  // 绘制到 canvas 中的 y 坐标
+    YPOS: 127,  // 地面绘制到 canvas 时的 y 坐标
   };
 
   HorizonLine.prototype = {
@@ -415,6 +430,84 @@
   };
 
   /**
+   * 云朵类
+   * @param {HTMLCanvasElement} canvas 画布
+   * @param {Object} spritePos 图片在雪碧图中的位置信息
+   * @param {Number} containerWidth 容器的宽度
+   */
+  function Cloud(canvas, spritePos, containerWidth) {
+    this.canvas = canvas;
+    this.ctx = this.canvas.getContext('2d');
+    this.spritePos = spritePos;
+    this.containerWidth = containerWidth;
+
+    // 坐标
+    this.xPos = containerWidth;
+    this.yPos = 0;
+
+    // 该云朵是否需要删除
+    this.remove = false;
+    // 随机云朵之间的间隙
+    this.cloudGap = getRandomNum(Cloud.config.MIN_CLOUD_GAP,
+      Cloud.config.MAX_CLOUD_GAP);
+
+    this.init();
+  }
+
+  Cloud.config = {
+    WIDTH: 46,
+    HEIGHT: 14,
+    MIN_CLOUD_GAP: 100,   // 云之间的最小间隙
+    MAX_CLOUD_GAP: 400,   // 云之间的最大间隙
+    MIN_SKY_LEVEL: 71,    // 云的最小高度
+    MAX_SKY_LEVEL: 30,    // 云的最大高度
+    BG_CLOUD_SPEED: 0.2,  // 云的速度
+    CLOUD_FREQUENCY: 0.5, // 云的频率
+    MAX_CLOUDS: 6         // 云的最大数量
+  };
+
+  Cloud.prototype = {
+    init: function () {
+      this.yPos = getRandomNum(Cloud.config.MAX_SKY_LEVEL,
+        Cloud.config.MIN_SKY_LEVEL);
+      this.draw();
+    },
+    draw: function () {
+      this.ctx.save();
+
+      var sourceWidth = Cloud.config.WIDTH;
+      var sourceHeight = Cloud.config.HEIGHT;
+      var outputWidth = sourceWidth;
+      var outputHeight = sourceHeight;
+
+      this.ctx.drawImage(
+        Runner.imageSprite,
+        this.spritePos.x, this.spritePos.y,
+        sourceWidth, sourceHeight,
+        this.xPos, this.yPos,
+        outputWidth, outputHeight
+      );
+      
+      this.ctx.restore();
+    },
+    update: function (speed) {
+      if (!this.remove) {
+        this.xPos -= speed;
+        this.draw();
+
+        // 云朵移出 canvas，将其删除
+        if (!this.isVisible()) {
+          this.remove = true;
+        }
+      }
+    },
+    // 云朵是否移出 canvas
+    isVisible: function () {
+      return this.xPos + Cloud.config.WIDTH > 0;
+    },
+  };
+
+  /**
    * Horizon 背景类
    * @param {HTMLCanvasElement} canvas 画布
    * @param {Object} spritePos 雪碧图中的位置
@@ -425,21 +518,21 @@
     this.canvas = canvas;
     this.ctx = this.canvas.getContext('2d');
     this.spritePos = spritePos;
-    // this.dimensions = dimensions;
+    this.dimensions = dimensions;
     // this.gapCoefficient = gapCoefficient;
     // this.config = Horizon.config;
 
     // this.obstacles = [];
     // this.obstacleHistory = [];
 
-    // // 云的频率
-    // this.cloudFrequency = this.config.CLOUD_FREQUENCY;
+    // 云的频率
+    this.cloudFrequency = Cloud.config.CLOUD_FREQUENCY;
     // // 夜晚模式
     // this.nightMode = null;
 
-    // // 云
-    // this.clouds = [];
-    // this.cloudSpeed = this.config.BG_CLOUD_SPEED;
+    // 云
+    this.clouds = [];
+    this.cloudSpeed = Cloud.config.BG_CLOUD_SPEED;
     
     // 地面
     this.horizonLine = null;
@@ -448,17 +541,49 @@
   }
 
   // Horizon.config = {
-  //   BG_CLOUD_SPEED: 0.2, // 云的速度
-  //   CLOUD_FREQUENCY: .5, // 云的频率
-  //   MAX_CLOUDS: 6        // 云的最大数量
   // };
 
   Horizon.prototype = {
     init: function () {
+      this.addCloud();
       this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
     },
     update: function (deltaTime, currentSpeed) {
       this.horizonLine.update(deltaTime, currentSpeed);
+      this.updateCloud(deltaTime, currentSpeed);
+    },
+    addCloud: function () {
+      this.clouds.push(new Cloud(this.canvas, this.spritePos.CLOUD,
+        this.dimensions.WIDTH));
+    },
+    updateCloud: function (deltaTime, speed) {
+      var cloudSpeed = Math.ceil(deltaTime * this.cloudSpeed * speed / 1000);
+      var numClouds = this.clouds.length;
+
+      if (numClouds) {
+        for (var i = numClouds - 1; i >= 0; i--) {
+          this.clouds[i].update(cloudSpeed);
+        }
+
+        var lastCloud = this.clouds[numClouds - 1];
+
+        // 检查是否需要添加新的云朵
+        // 添加云朵的条件：云朵数量少于最大数量、
+        // 最后一个云朵后面的空间大于它的间隙、
+        // 云朵出现频率符合要求
+        if (numClouds < Cloud.config.MAX_CLOUDS &&
+          (this.dimensions.WIDTH - lastCloud.xPos) > lastCloud.cloudGap &&
+          this.cloudFrequency > Math.random()) {
+          this.addCloud();
+        }
+
+        // 删除 remove 属性为 true 的云朵
+        this.clouds = this.clouds.filter(function (item) {
+          return !item.remove;
+        });
+      } else {
+        this.addCloud();
+      }
     },
   };
 
