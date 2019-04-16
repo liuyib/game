@@ -36,20 +36,20 @@
   // 游戏配置参数
   Runner.config = {
     // GAP_COEFFICIENT: 0.6,
-    SPEED: 6,                             // 移动速度
-    // ARCADE_MODE_INITIAL_TOP_POSITION: 35, // 街机模式时，canvas 距顶部的初始距离
-    // ARCADE_MODE_TOP_POSITION_PERCENT: 0.1 // 街机模式时，canvas 距页面顶部的距离，占屏幕高度的百分比
+    SPEED: 6,                              // 移动速度
+    ARCADE_MODE_INITIAL_TOP_POSITION: 35,  // 街机模式时，canvas 距顶部的初始距离
+    ARCADE_MODE_TOP_POSITION_PERCENT: 0.1, // 街机模式时，canvas 距页面顶部的距离，占屏幕高度的百分比
   };
 
   // 游戏的默认尺寸
   Runner.defaultDimensions = {
     WIDTH: DEFAULT_WIDTH,
-    HEIGHT: 150
+    HEIGHT: 150,
   };
   
   // 游戏用到的 className
   Runner.classes = {
-    // ARCADE_MODE: 'arcade-mode',
+    ARCADE_MODE: 'arcade-mode',
     CONTAINER: 'runner-container',
     CANVAS: 'runner-canvas',
     PLAYER: '', // 预留出的 className，用来控制 canvas 的样式
@@ -65,11 +65,11 @@
   Runner.keyCodes = {
     JUMP: {'38': 1, '32': 1}, // Up, Space
     DUCK: {'40': 1},          // Down
-    RESTART: {'13': 1}        // Enter
+    RESTART: {'13': 1},       // Enter
   };
 
   Runner.events = {
-    // ANIMATION_END: 'webkitAnimationEnd',
+    ANIMATION_END: 'webkitAnimationEnd',
     KEYDOWN: 'keydown',
     KEYUP: 'keyup',
     LOAD: 'load',
@@ -117,143 +117,115 @@
           this.init.bind(this));
       }
     },
-    // 监听按键事件
     startListening: function () {
       document.addEventListener(Runner.events.KEYDOWN, this);
       document.addEventListener(Runner.events.KEYUP, this);
     },
-    // // 移除事件监听器
-    // stopListening: function () {
-    //   document.removeEventListener(Runner.events.KEYDOWN, this);
-    //   document.removeEventListener(Runner.events.KEYUP, this);
-    // },
-    // /**
-    //  * 设置进入街机模式时 canvas 容器的缩放比例
-    //  */
-    // setArcadeModeContainerScale: function () {
-    //   var windowHeight = window.innerHeight;
-    //   var scaleHeight = windowHeight / this.dimensions.HEIGHT;
-    //   var scaleWidth = window.innerWidth / this.dimensions.WIDTH;
-    //   var scale = Math.max(1, Math.min(scaleHeight, scaleWidth));
-    //   var scaledCanvasHeight = this.dimensions.HEIGHT * scale;
+    stopListening: function () {
+      document.removeEventListener(Runner.events.KEYDOWN, this);
+      document.removeEventListener(Runner.events.KEYUP, this);
+    },
+    /**
+     * 游戏被激活时的开场动画
+     * 将 canvas 的宽度调整到最大
+     */
+    playIntro: function () {
+      if (!this.activated && !this.crashed) {
+        this.playingIntro = true; // 正在执行开场动画
 
-    //   // 将 canvas 横向占满屏幕，纵向距离顶部 10% 窗口高度处
-    //   var translateY = Math.ceil(Math.max(0, (windowHeight - scaledCanvasHeight -
-    //       Runner.config.ARCADE_MODE_INITIAL_TOP_POSITION) *
-    //       Runner.config.ARCADE_MODE_TOP_POSITION_PERCENT)) *
-    //       window.devicePixelRatio;
-    //   this.containerEl.style.transform = 'scale(' + scale + ') translateY(' +
-    //       translateY + 'px)';
-    // },
-    // /**
-    //  * 开启街机模式（全屏）
-    //  */
-    // setArcadeMode: function () {
-    //   document.body.classList.add(Runner.classes.ARCADE_MODE);
-    //   this.setArcadeModeContainerScale();
-    // },
-    // /**
-    //  * 当页面失焦时，暂停游戏
-    //  */
-    // onVisibilityChange: function (e) {
-    //   if (document.hidden || document.webkitHidden || e.type == 'blur' ||
-    //     document.visibilityState != 'visible') {
-    //     this.stop();
-    //   } else if (!this.crashed) {
-    //     this.play();
-    //   }
-    // },
-    // /**
-    //  * 更新游戏为开始状态
-    //  */
-    // startGame: function () {
-    //   this.setArcadeMode();      // 进入街机模式
+        // 定义 CSS 动画关键帧
+        var keyframes = '@-webkit-keyframes intro { ' +
+            'from { width:' + Trex.config.WIDTH + 'px }' +
+            'to { width: ' + this.dimensions.WIDTH + 'px }' +
+          '}';
+        // 将动画关键帧插入页面中的第一个样式表
+        document.styleSheets[0].insertRule(keyframes, 0);
+
+        this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
+        this.containerEl.style.width = this.dimensions.WIDTH + 'px';
+
+        // 监听动画。当触发结束事件时，设置游戏为开始状态
+        this.containerEl.addEventListener(Runner.events.ANIMATION_END,
+          this.startGame.bind(this));
+
+        this.setPlayStatus(true); // 设置游戏为进行状态
+        this.activated = true;    // 游戏彩蛋被激活
+      } else if (this.crashed) {
+        this.restart();
+      }
+    },
+    /**
+     * 更新游戏为开始状态
+     */
+    startGame: function () {
+      this.setArcadeMode();      // 进入街机模式
       
-    //   this.playingIntro = false; // 开场动画结束
-    //   this.containerEl.style.webkitAnimation = '';
+      this.playingIntro = false; // 开场动画结束
+      this.containerEl.style.webkitAnimation = '';
 
-    //   window.addEventListener(Runner.events.BLUR,
-    //     this.onVisibilityChange.bind(this));
+      window.addEventListener(Runner.events.BLUR,
+        this.onVisibilityChange.bind(this));
 
-    //   window.addEventListener(Runner.events.FOCUS,
-    //     this.onVisibilityChange.bind(this));
-    // },
-    // /**
-    //  * 游戏被激活时的开场动画
-    //  * 用于将 canvas 的宽度调整到最大
-    //  */
-    // playIntro: function () {
-    //   if (!this.activated && !this.crashed) {
-    //     this.playingIntro = true; // 正在开场动画
-
-    //     // 定义 CSS 动画关键帧
-    //     var keyframes = '@-webkit-keyframes intro { ' +
-    //         'from { width:' + Trex.config.WIDTH + 'px }' +
-    //         'to { width: ' + this.dimensions.WIDTH + 'px }' +
-    //       '}';
-    //     // 将动画关键帧插入页面中的第一个样式表
-    //     document.styleSheets[0].insertRule(keyframes, 0);
-
-    //     this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
-    //     this.containerEl.style.width = this.dimensions.WIDTH + 'px';
-
-    //     // 监听动画。当触发结束事件时，设置游戏为开始状态
-    //     this.containerEl.addEventListener(Runner.events.ANIMATION_END,
-    //       this.startGame.bind(this));
-
-    //     this.setPlayStatus(true); // 设置游戏为进行状态
-    //     this.activated = true;    // 游戏彩蛋被激活
-    //   } else if (this.crashed) {
-    //     this.restart();
-    //   }
-    // },
-    // setPlayStatus: function (isPlaying) {
-    //   this.playing = isPlaying;
-    // },
-    // play: function () {
-    //   if (!this.crashed) {
-    //     this.setPlayStatus(true);
-    //     this.paused = false;
-    //     this.time = this.getTimeStamp();
-    //     this.update();
-    //   }
-    // },
-    // stop: function () {
-    //   this.setPlayStatus(false);
-    //   this.paused = true;
-    //   cancelAnimationFrame(this.raqId);
-    //   this.raqId = 0;
-    // },
+      window.addEventListener(Runner.events.FOCUS,
+        this.onVisibilityChange.bind(this));
+    },
+    /**
+     * 当页面失焦时，暂停游戏
+     */
+    onVisibilityChange: function (e) {
+      if (document.hidden || document.webkitHidden || e.type == 'blur' ||
+        document.visibilityState != 'visible') {
+        this.stop();
+      } else if (!this.crashed) {
+        this.play();
+      }
+    },
+    play: function () {
+      if (!this.crashed) {
+        this.setPlayStatus(true);
+        this.paused = false;
+        this.time = this.getTimeStamp();
+        this.update();
+      }
+    },
+    stop: function () {
+      this.setPlayStatus(false);
+      this.paused = true;
+      cancelAnimationFrame(this.raqId);
+      this.raqId = 0;
+    },
     /**
      * 更新游戏帧并进行下一次更新
      */
     update: function () {
-      // this.updatePending = false; // 等待更新
+      this.updatePending = false; // 等待更新
 
       var now = this.getTimeStamp();
       var deltaTime = now - (this.time || now);
 
       this.time = now;
 
-      // if (this.playing) {
+      if (this.playing) {
         this.clearCanvas();
 
-        // if (!this.playingIntro) {
-        //   this.playIntro(); // 执行开场动画
-        // }
+        // 刚开始 this.playingIntro 不存在 !this.playingIntro 为真
+        if (!this.playingIntro) {
+          this.playIntro(); // 执行开场动画
+        }
 
         // 直到开场动画结束再移动地面
-        // if (this.playingIntro) {
-          // this.horizon.update(0, this.currentSpeed);
-        // } else {
-          // deltaTime = !this.activated ? 0 : deltaTime;
+        if (this.playingIntro) {
+          this.horizon.update(0, this.currentSpeed);
+        } else {
+          deltaTime = !this.activated ? 0 : deltaTime;
           this.horizon.update(deltaTime, this.currentSpeed);
-        // }
-      // }
+        }
+      }
 
-      // if (this.playing) {
+      if (this.playing) {
+        // 进行下一次更新
         this.scheduleNextUpdate();
-      // }
+      }
     },
     getTimeStamp: function () {
       return performance.now();
@@ -263,28 +235,38 @@
         this.dimensions.HEIGHT);
     },
     scheduleNextUpdate: function () {
-      // if (!this.updatePending) {
-        // this.updatePending = true;
+      if (!this.updatePending) {
+        this.updatePending = true;
         this.raqId = requestAnimationFrame(this.update.bind(this));
-      // }
+      }
     },
-    onKeyDown: function (e) {
-      if (!this.crashed && !this.paused) {
-        if (Runner.keyCodes.JUMP[e.keyCode]) {
-          e.preventDefault();
+    /**
+     * 设置进入街机模式时 canvas 容器的缩放比例
+     */
+    setArcadeModeContainerScale: function () {
+      var windowHeight = window.innerHeight;
+      var scaleHeight = windowHeight / this.dimensions.HEIGHT;
+      var scaleWidth = window.innerWidth / this.dimensions.WIDTH;
+      var scale = Math.max(1, Math.min(scaleHeight, scaleWidth));
+      var scaledCanvasHeight = this.dimensions.HEIGHT * scale;
 
-          // if (!this.playing) {
-            // this.setPlayStatus(true);
-            this.update();
-          // }
-
-          // this.activated = true;
-        }
-      }      
+      // 将 canvas 横向占满屏幕，纵向距离顶部 10% 窗口高度处
+      var translateY = Math.ceil(Math.max(0, (windowHeight - scaledCanvasHeight -
+          Runner.config.ARCADE_MODE_INITIAL_TOP_POSITION) *
+          Runner.config.ARCADE_MODE_TOP_POSITION_PERCENT)) *
+          window.devicePixelRatio;
+      this.containerEl.style.transform = 'scale(' + scale + ') translateY(' +
+          translateY + 'px)';
+    },
+    /**
+     * 开启街机模式（全屏）
+     */
+    setArcadeMode: function () {
+      document.body.classList.add(Runner.classes.ARCADE_MODE);
+      this.setArcadeModeContainerScale();
     },
     // 用来处理 EventTarget（这里就是 Runner 类） 上发生的事件
     // 当事件被发送到 EventListener 时，浏览器就会自动调用这个方法
-    // 然后就可以进行一些事件响应操作
     handleEvent: function (e) {
       return (function (eType, events) {
         switch (eType) {
@@ -295,6 +277,21 @@
             break;
         }
       }.bind(this))(e.type, Runner.events);
+    },
+    onKeyDown: function (e) {
+      if (!this.crashed && !this.paused) {
+        if (Runner.keyCodes.JUMP[e.keyCode]) {
+          e.preventDefault();
+
+          if (!this.playing) {
+            this.setPlayStatus(true);
+            this.update();
+          }
+        }
+      }      
+    },
+    setPlayStatus: function (isPlaying) {
+      this.playing = isPlaying;
     },
   };
 
@@ -465,9 +462,9 @@
     },
   };
 
-  // function Trex() {}
+  function Trex() {}
 
-  // Trex.config = {
-  //   WIDTH: 44,
-  // };
+  Trex.config = {
+    WIDTH: 44,
+  };
 })();

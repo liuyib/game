@@ -28,8 +28,7 @@
 .offline .runner-container {
   position: absolute;
   top: var(--arcade-mode-initial-top-position);
-  width: 100%;
-  /* width: var(--trex-config-width); */
+  width: var(--trex-config-width);
   max-width: 600px;
   height: var(--canvas-default-height);
   overflow: hidden;
