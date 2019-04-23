@@ -13,7 +13,7 @@
     this.config = optConfig || Runner.config;
     this.dimensions = Runner.defaultDimensions;
   
-    this.time = 0;                         // 动画帧时间间隔计时器
+    this.time = 0;                         // 时钟计时器
     this.runningTime = 0;                  // 游戏运行的时间
     this.msPerFrame = 1000 / FPS;          // 每帧的时间
     this.currentSpeed = this.config.SPEED; // 当前的速度
@@ -25,16 +25,15 @@
     this.crashed = false;    // 小恐龙是否碰到了障碍物
     this.paused = false      // 游戏是否暂停
 
-    // this.distanceMeter = null;     // 游戏距离记录器
-    // this.distanceRan = 0;          // 游戏移动距离
-
-    // this.highestScore = 0;         // 最高分
+    this.distanceMeter = null;     // 距离计数类
+    this.distanceRan = 0;          // 游戏移动距离
+    this.highestScore = 0;         // 最高分
     
     // this.soundFx = {};             // 音频 FX.
     // this.audioContext = null;      // 全局音频上下文
 
-    // this.inverted = false;         // 是否开启夜晚模式
-    // this.invertTimer = 0;          // 夜晚模式的时间
+    this.inverted = false;         // 是否开启夜晚模式
+    this.invertTimer = 0;          // 夜晚模式的时间
   
     // 加载雪碧图，并初始化游戏
     this.loadImages();
@@ -53,8 +52,8 @@
     ACCELERATION: 0.001,                     // 加速度
     ARCADE_MODE_INITIAL_TOP_POSITION: 35,    // 街机模式时，canvas 距顶部的初始距离
     ARCADE_MODE_TOP_POSITION_PERCENT: 0.1,   // 街机模式时，canvas 距页面顶部的距离，占屏幕高度的百分比
-    // INVERT_FADE_DURATION: 12000,             // 夜晚模式的持续时间
-    // INVERT_DISTANCE: 700,                    // 触发夜晚模式的距离
+    INVERT_FADE_DURATION: 12000,             // 夜晚模式的持续时间
+    INVERT_DISTANCE: 100,                    // 触发夜晚模式的距离
     // RESOURCE_TEMPLATE_ID: 'audio-resources', // 音频元素 ID
     CLEAR_TIME: 3000,                        // 开始游戏后，最快绘制障碍物的时间
     MAX_OBSTACLE_DUPLICATION: 2,             // 障碍物相邻的最大重复数
@@ -72,7 +71,7 @@
     CONTAINER: 'runner-container',
     CANVAS: 'runner-canvas',
     PLAYER: '', // 预留出的 className，可以用来自定义 canvas 的样式
-    // INVERTED: 'inverted',
+    INVERTED: 'inverted',
   };
 
   // 雪碧图中小图片的坐标信息
@@ -83,9 +82,9 @@
       CACTUS_SMALL: {x: 228, y: 2}, // 小仙人掌
       CACTUS_LARGE: {x: 332, y: 2}, // 大仙人掌
       PTERODACTYL: {x: 134, y: 2},  // 翼龙
-      // MOON: {x: 484, y: 2},
-      // STAR: {x: 645, y: 2},
-      // TEXT_SPRITE: {x: 655, y: 2},
+      MOON: {x: 484, y: 2},
+      STAR: {x: 645, y: 2},
+      TEXT_SPRITE: {x: 655, y: 2},
     },
   };
 
@@ -131,9 +130,9 @@
       this.horizon = new Horizon(this.canvas, this.spriteDef,
         this.dimensions, this.config.GAP_COEFFICIENT);
 
-      // // 加载距离计数器类 DistanceMeter
-      // this.distanceMeter = new DistanceMeter(this.canvas,
-      //   this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
+      // 加载距离计数器类 DistanceMeter
+      this.distanceMeter = new DistanceMeter(this.canvas,
+        this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
 
       // 将游戏添加到页面中
       this.outerContainerEl.appendChild(this.containerEl);
@@ -234,8 +233,8 @@
       if (document.hidden || document.webkitHidden || e.type == 'blur' ||
         document.visibilityState != 'visible') {
         this.stop();
-        
-        // this.gameOver(); // TODO Temp *****************
+       
+        this.gameOver();
       } else if (!this.crashed) {
         this.play();
       }
@@ -268,11 +267,11 @@
     update: function () {
       this.updatePending = false; // 等待更新
 
-      var now = Math.round(getTimeStamp());
-      var deltaTime = now - (this.time || now);
-      this.time = now;
-
       if (this.playing) {
+        var now = Math.round(getTimeStamp());
+        var deltaTime = now - (this.time || now);
+        this.time = now;
+
         this.clearCanvas();
 
         this.runningTime += deltaTime;
@@ -288,42 +287,45 @@
           this.horizon.update(0, this.currentSpeed, hasObstacles);
         } else {
           deltaTime = !this.activated ? 0 : deltaTime;
-          this.horizon.update(deltaTime, this.currentSpeed, hasObstacles);
+          this.horizon.update(deltaTime, this.currentSpeed, hasObstacles,
+            this.inverted);
         }
 
+        this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
+  
         if (this.currentSpeed < this.config.MAX_SPEED) {
           this.currentSpeed += this.config.ACCELERATION;
         }
 
-        // var playAchievementSound = this.distanceMeter.update(deltaTime,
-        //   Math.ceil(this.distanceRan));
+        var playAchievementSound = this.distanceMeter.update(deltaTime,
+          Math.ceil(this.distanceRan));
 
         // if (playAchievementSound) {
         //   this.playSound(this.soundFx.SCORE);
         // }
 
-        // // 夜晚模式
-        // if (this.invertTimer > this.config.INVERT_FADE_DURATION) { // 夜晚模式结束
-        //   this.invertTimer = 0;
-        //   this.invertTrigger = false;
-        //   this.invert();
-        // } else if (this.invertTimer) { // 处于夜晚模式，更新其时间
-        //   this.invertTimer += deltaTime;
-        // } else { // 还没进入夜晚模式
-        //   // 游戏移动的距离
-        //   var actualDistance =
-        //     this.distanceMeter.getActualDistance(Math.ceil(this.distanceRan));
+        // 夜晚模式
+        if (this.invertTimer > this.config.INVERT_FADE_DURATION) { // 夜晚模式结束
+          this.invertTimer = 0;
+          this.invertTrigger = false;
+          this.invert();
+        } else if (this.invertTimer) { // 处于夜晚模式，更新其时间
+          this.invertTimer += deltaTime;
+        } else { // 还没进入夜晚模式
+          // 游戏移动的距离
+          var actualDistance =
+            this.distanceMeter.getActualDistance(Math.ceil(this.distanceRan));
 
-        //   if(actualDistance > 0) {
-        //     // 每移动指定距离就触发一次夜晚模式
-        //     this.invertTrigger = !(actualDistance % this.config.INVERT_DISTANCE);
+          if(actualDistance > 0) {
+            // 每移动指定距离就触发一次夜晚模式
+            this.invertTrigger = !(actualDistance % this.config.INVERT_DISTANCE);
 
-        //     if (this.invertTrigger && this.invertTimer === 0) {
-        //       this.invertTimer += invertTimer;
-        //       this.invert();
-        //     }
-        //   }
-        // }
+            if (this.invertTrigger && this.invertTimer === 0) {
+              this.invertTimer += deltaTime;
+              this.invert();
+            }
+          }
+        }
       }
 
       if (this.playing) {
@@ -340,6 +342,18 @@
         this.updatePending = true;
         this.raqId = requestAnimationFrame(this.update.bind(this));
       }
+    },
+    // 游戏结束
+    gameOver: function () {
+      this.stop();
+
+      if (this.distanceRan > this.highestScore) {
+        this.highestScore = Math.ceil(this.distanceRan);
+        this.distanceMeter.setHighScore(this.highestScore);
+      }
+
+      // 重置时钟
+      this.time = getTimeStamp();
     },
     // 用来处理 EventTarget（这里就是 Runner 类） 上发生的事件
     // 当事件被发送到 EventListener 时，浏览器就会自动调用这个方法
@@ -370,18 +384,6 @@
     setPlayStatus: function (isPlaying) {
       this.playing = isPlaying;
     },
-    // gameOver: function () {
-    //   this.playSound(this.soundFx.HIT);
-    //   this.stop();
-
-    //   if (this.distanceRan > this.highestScore) {
-    //     this.highestScore = Math.ceil(this.distanceRan);
-    //     this.distanceMeter.setHighScore(this.highestScore);
-    //   }
-
-    //   // 重置时间
-    //   this.time = getTimeStamp();
-    // },
     /**
      * 设置进入街机模式时 canvas 容器的缩放比例
      */
@@ -407,23 +409,23 @@
       document.body.classList.add(Runner.classes.ARCADE_MODE);
       this.setArcadeModeContainerScale();
     },
-    // /**
-    //  * 反转当前页面的颜色
-    //  * @param {Boolea} reset 是否重置颜色
-    //  */
-    // invert: function (reset) {
-    //   var htmlElem = document.firstElementChild;
+    /**
+     * 反转当前页面的颜色
+     * @param {Boolea} reset 是否重置颜色
+     */
+    invert: function (reset) {
+      var bodyElem = document.body;
 
-    //   if (reset) {
-    //     htmlElem.classList.toggle(Runner.classes.INVERTED, false); // 删除 className
+      if (reset) {
+        bodyElem.classList.toggle(Runner.classes.INVERTED, false); // 删除 className
 
-    //     this.invertTimer = 0;  // 重置夜晚模式的时间
-    //     this.inverted = false; // 关闭夜晚模式
-    //   } else {
-    //     this.inverted = htmlElem.classList.toggle(Runner.classes.INVERTED,
-    //       this.invertTrigger);
-    //   }
-    // },
+        this.invertTimer = 0;  // 重置夜晚模式的时间
+        this.inverted = false; // 关闭夜晚模式
+      } else {
+        this.inverted = bodyElem.classList.toggle(Runner.classes.INVERTED,
+          this.invertTrigger);
+      }
+    },
   };
 
   // ==========================================
@@ -659,369 +661,355 @@
     },
   };
 
-  // /**
-  //  * 记录移动的距离（分数等于移动距离）
-  //  * @param {HTMLCanvasElement} canvas 画布
-  //  * @param {Object} spritePos 图片在雪碧图中的位置
-  //  * @param {Number} canvasWidth 画布的宽度
-  //  */
-  // function DistanceMeter(canvas, spritePos, canvasWidth) {
-  //   this.canvas = canvas;
-  //   this.ctx = canvas.getContext('2d');
+  /**
+   * 记录移动的距离（分数等于移动距离）
+   * @param {HTMLCanvasElement} canvas 画布
+   * @param {Object} spritePos 图片在雪碧图中的位置
+   * @param {Number} canvasWidth 画布的宽度
+   */
+  function DistanceMeter(canvas, spritePos, canvasWidth) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+
+    this.config = DistanceMeter.config;
+    this.spritePos = spritePos;
+
+    this.x = 0;               // 分数显示在 canvas 中的 x 坐标
+    this.y = 5;
+
+    this.maxScore = 0;        // 游戏分数上限
+    this.highScore = [];      // 存储最高分数的每一位数字
+
+    this.digits = [];         // 存储分数的每一位数字
+    this.achievement = false; // 是否进行闪动特效
+    this.defaultString = '';  // 游戏的默认距离（00000）
+    this.flashTimer = 0;      // 动画计时器
+    this.flashIterations = 0; // 特效闪动的次数
+
+    this.maxScoreUnits = this.config.MAX_DISTANCE_UNITS; // 分数的最大位数
+
+    this.init(canvasWidth);
+  }
+
+  DistanceMeter.config = {
+    MAX_DISTANCE_UNITS: 5,          // 分数的最大位数
+    ACHIEVEMENT_DISTANCE: 100,      // 每 100 米触发一次闪动特效
+    COEFFICIENT: 0.025,             // 将像素距离转换为比例单位的系数
+    FLASH_DURATION: 1000 / 4,       // 一闪的时间（一次闪动分别两闪：从有到无，从无到有）
+    FLASH_ITERATIONS: 3,            // 闪动的次数
+  };
+
+  DistanceMeter.dimensions = {
+    WIDTH: 10,
+    HEIGHT: 13,
+    DEST_WIDTH: 11, // 加上间隔后每个数字的宽度
+  };
+
+  DistanceMeter.prototype = {
+    init: function (width) {
+      var maxDistanceStr = '';     // 游戏的最大距离
+
+      this.calcXPos(width);        // 计算分数显示在 canvas 中的 x 坐标
+
+      for (var i = 0; i < this.maxScoreUnits; i++) {
+        this.draw(i, 0);           // 第一次游戏，不绘制最高分
+        this.defaultString += '0'; // 默认初始分数 00000
+        maxDistanceStr += '9';     // 默认最大分数 99999
+      }
+      
+      this.maxScore = parseInt(maxDistanceStr);
+    },
+    calcXPos: function (canvasWidth) {
+      this.x = canvasWidth - (DistanceMeter.dimensions.DEST_WIDTH *
+        (this.maxScoreUnits + 1));
+    },
+    /**
+     * 将分数绘制到 canvas 上
+     * @param {Number} digitPos 数字在分数中的位置
+     * @param {Number} value 数字的具体值（0-9）
+     * @param {Boolean} optHighScore 是否显示最高分
+     */
+    draw: function (digitPos, value, optHighScore) {
+      // 在雪碧图中的坐标
+      var sourceX = this.spritePos.x + DistanceMeter.dimensions.WIDTH * value;
+      var sourceY = this.spritePos.y + 0;
+      var sourceWidth = DistanceMeter.dimensions.WIDTH;
+      var sourceHeight = DistanceMeter.dimensions.HEIGHT;
+
+      // 绘制到 canvas 时的坐标
+      var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH;
+      var targetY = this.y;
+      var targetWidth = DistanceMeter.dimensions.WIDTH;
+      var targetHeight = DistanceMeter.dimensions.HEIGHT;
+
+      this.ctx.save();
+
+      if (optHighScore) { // 显示最高分
+        var hightScoreX = this.x - (this.maxScoreUnits * 2) *
+          DistanceMeter.dimensions.WIDTH;
+
+        this.ctx.translate(hightScoreX, this.y);
+      } else {            // 不显示最高分
+        this.ctx.translate(this.x, this.y);
+      }
+
+      this.ctx.drawImage(
+        Runner.imageSprite,
+        sourceX, sourceY,
+        sourceWidth, sourceHeight,
+        targetX, targetY,
+        targetWidth, targetHeight
+      );
+
+      this.ctx.restore();
+    },
+    /**
+     * 将游戏移动的像素距离转换为真实的距离
+     * @param {Number} distance 游戏移动的像素距离
+     */
+    getActualDistance: function (distance) {
+      return distance ? Math.round(distance * this.config.COEFFICIENT) : 0;
+    },
+    update: function (deltaTime, distance) {
+      var paint = true;      // 是否绘制分数
+      var playSound = false; // 是否播放音效
+
+      // 没有进行闪动特效
+      if (!this.achievement) {
+        distance = this.getActualDistance(distance);
+
+        // 分数超出上限时，上限增加一位数。超出上限两位数时，分数置零
+        if (distance > this.maxScore &&
+          this.maxScoreUnits === this.config.MAX_DISTANCE_UNITS) {
+          this.maxScoreUnits++;
+          this.maxScore = parseInt(this.maxScore + '9');
+        } else {
+          this.distance = 0;
+        }
+
+        if (distance > 0) {
+          // 触发闪动特效
+          if (distance % this.config.ACHIEVEMENT_DISTANCE == 0) {
+            this.achievement = true;
+            this.flashTimer = 0;
+            playSound = true;
+          }
+
+          // 分数前面补零来凑位数
+          var distanceStr = (this.defaultString + distance).substr(-this.maxScoreUnits);
+          this.digits = distanceStr.split('');
+        } else {
+          // 将默认分数 00000 中的每一位数字存到数组中
+          this.digits = this.defaultString.split('');
+        }
+      } else {
+        // 控制特效的闪动次数
+        if (this.flashIterations <= this.config.FLASH_ITERATIONS) {
+          this.flashTimer += deltaTime;
+
+          // 第一闪不绘制数字
+          if (this.flashTimer < this.config.FLASH_DURATION) {
+            paint = false;
+          }
+          // 进行了两闪，闪动次数加一
+          else if (this.flashTimer > this.config.FLASH_DURATION * 2) {
+            this.flashTimer = 0;
+            this.flashIterations++;
+          }
+        } else { // 闪动特效结束
+          this.achievement = false;
+          this.flashIterations = 0;
+          this.flashTimer = 0;
+        }
+      }
+
+      // 绘制当前分
+      if (paint) {
+        for (var i = this.digits.length - 1; i >= 0; i--) {
+          this.draw(i, parseInt(this.digits[i]));
+        }
+      }
+
+      // 绘制最高分
+      this.drawHighScore();
+      return playSound;
+    },
+    drawHighScore: function () {
+      this.ctx.save();
+      this.ctx.globalAlpha = 0.8;
+
+      for (var i = this.highScore.length - 1; i >= 0; i--) {
+        this.draw(i, parseInt(this.highScore[i], 10), true);
+      }
+      this.ctx.restore();
+    },
+    /**
+     * 将游戏的最高分数存入数组
+     * @param {Number} distance 游戏移动的像素距离
+     */
+    setHighScore: function (distance) {
+      distance = this.getActualDistance(distance);
+      var highScoreStr = (this.defaultString
+        + distance).substr(-this.maxScoreUnits);
+      
+      // 分数前面字母 H、I 在雪碧图中位于数字后面，也就是第 10、11 位置
+      this.highScore = ['10', '11', ''].concat(highScoreStr.split(''));
+    },
+  };
+
+  /**
+   * 夜晚模式
+   * @param {HTMLCanvasElement} canvas 画布
+   * @param {Object} spritePos 雪碧图中的坐标信息
+   * @param {Number} containerWidth 容器宽度
+   */
+  function NightMode(canvas, spritePos, containerWidth) {
+    this.canvas = canvas;
+    this.ctx = this.canvas.getContext('2d');
+
+    this.spritePos = spritePos;
+    this.containerWidth = containerWidth;
+
+    this.xPos = containerWidth - 50; // 月亮的 x 坐标
+    this.yPos = 30;                  // 月亮的 y 坐标
+    this.currentPhase = 0;           // 月亮当前所处的时期
+    this.opacity = 0;                // 星星和月亮的透明度
+    this.stars = [];                 // 存储星星
+    this.drawStars = false;          // 是否绘制星星
     
-  //   this.config = DistanceMeter.config;
-  //   this.spritePos = spritePos;
-  //   this.container = null;
+    // 放置星星
+    this.placeStars();
+  }
 
-  //   this.x = 0;               // 分数显示在 canvas 中的 x 坐标
-  //   this.y = 5;
+  NightMode.config = {
+    WIDTH: 20,         // 半月的宽度
+    HEIGHT: 40,        // 月亮的高度
+    FADE_SPEED: 0.035, // 淡入淡出的速度
+    MOON_SPEED: 0.25,  // 月亮的速度
+    NUM_STARS: 2,      // 星星的数量
+    STAR_SIZE: 9,      // 星星的大小
+    STAR_SPEED: 0.3,   // 星星的速度
+    STAR_MAX_Y: 70,    // 星星在画布上的最大 y 坐标
+  };
 
-  //   this.currentDistance = 0;
-  //   this.maxScore = 0;        // 游戏分数上限
-  //   this.highScore = [];      // 存储最高分数的每一位数字
+  // 月亮所处的时期（不同的时期有不同的位置）
+  NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
 
-  //   this.digits = [];         // 存储分数的每一位数字
-  //   this.achievement = false; // 是否进行闪动特效
-  //   this.defaultString = '';  // 游戏的默认距离（00000）
-  //   this.flashTimer = 0;      // 动画计时器
-  //   this.flashIterations = 0; // 特效闪动的次数
+  NightMode.prototype = {
+    draw: function () {
+      // 月期为 3 时，月亮为满月
+      var moonSourceWidth = this.currentPhase == 3 ? NightMode.config.WIDTH * 2 :
+         NightMode.config.WIDTH;
+      var moonSourceHeight = NightMode.config.HEIGHT;
 
-  //   this.invertTrigger = false;
-  //   this.flashingRafId = null;
-  //   this.highScoreBounds = {};
-  //   this.highScoreFlashing = false; // 是否闪动最高分
+      // 月亮在雪碧图中的 x 坐标
+      var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
+      var moonOutputWidth = moonSourceWidth;
 
-  //   this.maxScoreUnits = this.config.MAX_DISTANCE_UNITS; // 分数的最大位数
+      // 星星在雪碧图中的 x 坐标
+      var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
+      var starSize = NightMode.config.STAR_SIZE;
 
-  //   this.init(canvasWidth);
-  // }
+      this.ctx.save();
+      this.ctx.globalAlpha = this.opacity; // 画布的透明度随之变化
 
-  // DistanceMeter.config = {
-  //   MAX_DISTANCE_UNITS: 5,          // 分数的最大位数
-  //   ACHIEVEMENT_DISTANCE: 100,      // 每 100 米触发一次闪动特效
-  //   COEFFICIENT: 0.025,             // 将像素距离转换为比例单位的系数
-  //   FLASH_DURATION: 1000 / 4,       // 一闪的时间（一次闪动分别两闪：从有到无，从无到有）
-  //   FLASH_ITERATIONS: 3,            // 闪动的次数
-  //   // HIGH_SCORE_HIT_AREA_PADDING: 4, // TODO ???
-  // };
+      // 绘制星星
+      if (this.drawStars) {
+        for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+          this.ctx.drawImage(
+            Runner.imageSprite,
+            starSourceX, this.stars[i].sourceY,
+            starSize, starSize,
+            Math.round(this.stars[i].x), this.stars[i].y,
+            NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE,
+          );
+        }
+      }
 
-  // DistanceMeter.dimensions = {
-  //   WIDTH: 10,
-  //   HEIGHT: 13,
-  //   DEST_WIDTH: 11, // 加上间隔后每个数字的宽度
-  // };
-
-  // // DistanceMeter.yPos = [0, 13, 27, 40, 53, 67, 80, 93, 107, 120];
-
-  // DistanceMeter.prototype = {
-  //   init: function (width) {
-  //     var maxDistanceStr = ''; // 游戏的最大距离
-
-  //     this.calcXPos(width);    // 计算分数显示在 canvas 中的 x 坐标
-
-  //     for (var i = 0; i < this.maxScoreUnits; i++) {
-  //       this.draw(i, 0); // 第一次游戏，不绘制最高分
-  //       this.defaultString += '0';
-  //       maxDistanceStr += '9';
-  //     }
-
-  //     log('dis init');
-
-  //     this.maxScore = parseInt(maxDistanceStr); // 游戏的最大分数（默认为 99999）
-  //   },
-  //   calcXPos: function (canvasWidth) {
-  //     this.x = canvasWidth - (DistanceMeter.dimensions.DEST_WIDTH *
-  //       (this.maxScoreUnits + 1));
-  //   },
-  //   /**
-  //    * 将分数绘制到 canvas 上
-  //    * @param {Number} digitPos 数字在分数中的位置
-  //    * @param {Number} value 数字的具体值（0-9）
-  //    * @param {Boolean} optHighScore 是否显示最高分
-  //    */
-  //   draw: function (digitPos, value, optHighScore) {
-  //     // 在雪碧图中的坐标
-  //     var sourceX = this.spritePos.x + DistanceMeter.dimensions.WIDTH * value;
-  //     var sourceY = this.spritePos.y + 0;
-  //     var sourceWidth = DistanceMeter.dimensions.WIDTH;
-  //     var sourceHeight = DistanceMeter.dimensions.HEIGHT;
-
-  //     // 绘制到 canvas 时的坐标
-  //     var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH;
-  //     var targetY = this.y;
-  //     var targetWidth = DistanceMeter.dimensions.WIDTH;
-  //     var targetHeight = DistanceMeter.dimensions.HEIGHT;
-
-  //     this.ctx.save();
-
-  //     if (optHighScore) {
-  //       var hightScoreX = this.x - (this.maxScoreUnits * 2) *
-  //         DistanceMeter.dimensions.WIDTH;
-
-  //       this.ctx.translate(hightScoreX, this.y);
-  //     } else {
-  //       this.ctx.translate(this.x, this.y);
-  //     }
-
-  //     this.ctx.drawImage(
-  //       Runner.imageSprite,
-  //       sourceX, sourceY,
-  //       sourceWidth, sourceHeight,
-  //       targetX, targetY,
-  //       targetWidth, targetHeight
-  //     );
-
-  //     this.ctx.restore();
-  //   },
-  //   /**
-  //    * 将游戏移动的像素距离转换为真实的距离
-  //    * @param {Number} distance 游戏移动的像素距离
-  //    */
-  //   getActualDistance: function (distance) {
-  //     return distance ? Math.round(distance * this.config.COEFFICIENT) : 0;
-  //   },
-  //   update: function (deltaTime, distance) {
-  //     var paint = true;      // 是否进行绘制分数
-  //     var playSound = false; // 是否播放音效
-
-  //     // 没有进行闪动特效
-  //     if (!this.achievement) {
-  //       distance = this.getActualDistance(distance);
-
-  //       // 分数超出分数上限时，分数上限增加一位数。超出两位数时，分数置零
-  //       if (distance > this.maxScore &&
-  //         this.maxScoreUnits === this.config.MAX_DISTANCE_UNITS) {
-  //         this.maxScoreUnits++;
-  //         this.maxScore = parseInt(this.maxScore + '9');
-  //       } else {
-  //         this.distance = 0;
-  //       }
-
-  //       if (distance > 0) {
-  //         // 触发闪动特效
-  //         if (distance % this.config.ACHIEVEMENT_DISTANCE == 0) {
-  //           this.achievement = true;
-  //           this.flashTimer = 0;
-  //           playSound = true;
-  //         }
-
-  //         // 分数前面补零，来凑齐位数
-  //         var distanceStr = (this.defaultString + distance).substr(-this.maxScoreUnits);
-  //         this.digits = distanceStr.split('');
-  //       } else {
-  //         this.digits = this.defaultString.split('');
-  //       }
-  //     } else {
-  //       // 控制特效的闪动次数
-  //       if (this.flashIterations <= this.config.FLASH_ITERATIONS) {
-  //         this.flashTimer += deltaTime;
-
-  //         // 第一闪不绘制数字
-  //         if (this.flashTimer < this.config.FLASH_DURATION) {
-  //           paint = false;
-  //         }
-  //         // 进行了两闪，闪动次数加一
-  //         else if (this.flashTimer > this.config.FLASH_DURATION * 2) {
-  //           this.flashTimer = 0;
-  //           this.flashIterations++;
-  //         }
-  //       } else {
-  //         this.achievement = false;
-  //         this.flashIterations = 0;
-  //         this.flashTimer = 0;
-  //       }
-  //     }
-
-  //     if (paint) {
-  //       // for (var i = 0; i < this.digits.length; i++) {
-  //       //   this.draw(i, parseInt(this.digits[i]));
-  //       // }
-  //       for (var i = this.digits.length - 1; i >= 0; i--) {
-  //         this.draw(i, parseInt(this.digits[i]));
-  //       }
-  //     }
-
-  //     this.drawHighScore();
-  //     return playSound;
-  //   },
-  //   drawHighScore: function () {
-  //     this.ctx.save();
-  //     this.ctx.globalAlpha = .8;
-  //     // for (var i = 0; i < this.highScore.length; i++) {
-  //     //   this.draw(i, parseInt(this.highScore[i], 10), true);
-  //     // }
-  //     for (var i = this.highScore.length - 1; i >= 0; i--) {
-  //       this.draw(i, parseInt(this.highScore[i], 10), true);
-  //     }
-  //     this.ctx.restore();
-  //   },
-  //   /**
-  //    * 将游戏的最高分数存入数组
-  //    * @param {Number} distance 游戏移动的像素距离
-  //    */
-  //   setHighScore: function (distance) {
-  //     distance = this.getActualDistance(distance);
-  //     var highScoreStr = (this.defaultString
-  //       + distance).substr(-this.maxScoreUnits);
+      // 绘制月亮
+      this.ctx.drawImage(
+        Runner.imageSprite,
+        moonSourceX, this.spritePos.y,
+        moonSourceWidth, moonSourceHeight,
+        Math.round(this.xPos), this.yPos,
+        moonOutputWidth, NightMode.config.HEIGHT
+      );
       
-  //     this.highScore = ['10', '11', ''].concat(highScoreStr.split(''));
-  //   },
-  //   reset: function () {
-  //     this.update(0);
-  //     this.achievement = false;
-  //   },
-  // };
+      this.ctx.globalAlpha = 1;
+      this.ctx.restore();
+    },
+    /**
+     * 更新月亮位置，改变月期
+     * @param {Boolean} activated 是否夜晚模式被激活
+     */
+    update: function (activated) {
+      // 改变月期
+      if (activated && this.opacity === 0) {
+        this.currentPhase++;
 
-  // /**
-  //  * 夜晚模式
-  //  * @param {HTMLCanvasElement} canvas 画布
-  //  * @param {Object} spritePos 雪碧图中的坐标信息
-  //  * @param {Number} containerWidth 容器宽度
-  //  */
-  // function NightMode(canvas, spritePos, containerWidth) {
-  //   this.canvas = canvas;
-  //   this.ctx = this.canvas.getContext('2d');
+        if (this.currentPhase >= NightMode.phases.length) {
+          this.currentPhase = 0;
+        }
+      }
 
-  //   this.spritePos = spritePos;
-  //   this.containerWidth = containerWidth;
+      // 淡入
+      if (activated && (this.opacity < 1 || this.opacity === 0)) {
+        this.opacity += NightMode.config.FADE_SPEED;
+      } else if (this.opacity > 0) { // 淡出
+        // this.opacity -= NightMode.config.FADE_SPEED;
+      }
 
-  //   this.xPos = containerWidth - 50; // 月亮的 x 坐标
-  //   this.yPos = 30;                  // 月亮的 y 坐标
-  //   this.currentPhase = 0;           // 月亮当前所处的时期
-  //   this.opacity = 0;
-  //   this.stars = [];                 // 存储星星
-  //   this.drawStars = false;          // 是否绘制星星
+      // 设置月亮和星星的位置
+      if (this.opacity > 0) {
+        // 更新月亮的 x 坐标
+        this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
 
-  //   this.placeStars();               // 放置星星
-  // }
+        // 更新星星的 x 坐标
+        if (this.drawStars) {
+          for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+            this.stars[i].x = this.updateXPos(this.stars[i].x, 
+              NightMode.config.STAR_SPEED);
+          }
+        }
 
-  // NightMode.config = {
-  //   WIDTH: 20,         // 半月的宽度
-  //   HEIGHT: 40,        // 月亮的高度
-  //   FADE_SPEED: 0.035, // 淡入淡出的速度
-  //   MOON_SPEED: 0.25,  // 月亮的速度
-  //   NUM_STARS: 2,      // 星星的数量
-  //   STAR_SIZE: 9,      // 星星的大小
-  //   STAR_SPEED: 0.3,   // 星星的速度
-  //   STAR_MAX_Y: 70,    // 星星在画布上的最大 y 坐标
-  // };
+        this.draw();
+      } else {
+        this.opacity = 0;
+        this.placeStars();
+      }
 
-  // // 月亮所处的时期（不同的时期有不同的位置）
-  // NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
+      this.drawStars = true;
+    },
+    // 更新 x 坐标
+    updateXPos: function (currentPos, speed) {
+      // 月亮移出画布半个月亮宽度，将其位置移动到画布右边
+      if (currentPos < -NightMode.config.WIDTH) {
+        currentPos = this.containerWidth;
+      } else {
+        currentPos -= speed;
+      }
 
-  // NightMode.prototype = {
-  //   draw: function () {
-  //     // 月期为 3 时，月亮为满月
-  //     var moonSourceWidth = this.currentPhase == 3 ? NightMode.config.WIDTH * 2 :
-  //        NightMode.config.WIDTH;
-  //     var moonSourceHeight = NightMode.config.HEIGHT;
+      return currentPos;
+    },
+    // 随机放置星星
+    placeStars: function () {
+      // 将画布分为若干组
+      var segmentSize = Math.round(this.containerWidth /
+        NightMode.config.NUM_STARS);
 
-  //     // 月亮在雪碧图中的 x 坐标
-  //     var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
-  //     var moonOutputWidth = moonSourceWidth;
-      
-  //     // 星星在雪碧图中的 x 坐标
-  //     var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
-  //     var starSize = NightMode.config.STAR_SIZE;
+      for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+        this.stars[i] = {};
 
-  //     this.ctx.save();
-  //     this.ctx.globalAlpha = this.opacity; // 画布的透明度随之变化
+        // 分别随机每组画布中星星的位置
+        this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
+        this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
 
-  //     // 绘制星星
-  //     if (this.drawStars) {
-  //       for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-  //         this.ctx.drawImage(
-  //           Runner.imageSprite,
-  //           starSourceX, this.stars[i].sourceY,
-  //           starSize, starSize,
-  //           Math.round(this.stars[i].x), this.stars[i].y,
-  //           NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE,
-  //         );
-  //       }
-  //     }
-
-  //     // 绘制月亮
-  //     this.ctx.drawImage(
-  //       Runner.imageSprite,
-  //       moonSourceX, this.spritePos.y,
-  //       moonSourceWidth, moonSourceHeight,
-  //       Math.round(this.xPos), this.yPos,
-  //       moonOutputWidth, NightMode.config.HEIGHT
-  //     );
-      
-  //     this.ctx.globalAlpha = 1;
-  //     this.ctx.restore();
-  //   },
-  //   /**
-  //    * 更新月亮位置，改变月期
-  //    * @param {Boolean} activated 是否夜晚模式被激活
-  //    */
-  //   update: function (activated) {
-  //     // 改变月期
-  //     if (activated && this.opacity === 0) {
-  //       this.currentPhase++;
-
-  //       if (this.currentPhase >= NightMode.phases.length) {
-  //         this.currentPhase = 0;
-  //       }
-  //     }
-
-  //     // 淡入
-  //     if (activated && (this.opacity < 1 || this.opacity === 0)) {
-  //       this.opacity += NightMode.config.FADE_SPEED;
-  //     } else if (this.opacity > 0) { // 淡出
-  //       this.opacity -= NightMode.config.FADE_SPEED;
-  //     }
-
-  //     // 设置月亮和星星的位置
-  //     if (this.opacity > 0) {
-  //       // 更新月亮的 x 坐标
-  //       this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
-
-  //       // 更新星星的 x 坐标
-  //       if (this.drawStars) {
-  //         for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-  //           this.stars[i].x = this.updateXPos(this.stars[i].x, 
-  //             NightMode.config.STAR_SPEED);
-  //         }
-  //       }
-
-  //       this.draw();
-  //     } else {
-  //       this.opacity = 0;
-  //       this.placeStars();
-  //     }
-
-  //     this.drawStars = true;
-  //   },
-  //   updateXPos: function (currentPos, speed) {
-  //     // 月亮移出画布半个月亮宽度，将其位置移动到画布右边
-  //     if (currentPos < -NightMode.config.WIDTH) {
-  //       currentPos = this.containerWidth;
-  //     } else {
-  //       currentPos -= speed;
-  //     }
-
-  //     return currentPos;
-  //   },
-  //   placeStars: function () {
-  //     // 将画布分为若干组
-  //     var segmentSize = Math.round(this.containerWidth /
-  //       NightMode.config.NUM_STARS);
-
-  //     for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-  //       this.stars[i] = {};
-
-  //       // 分别随机每组画布中星星的位置
-  //       this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
-  //       this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
-
-  //       // 星星在雪碧图中的 y 坐标
-  //       this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
-  //           NightMode.config.STAR_SIZE * i;
-  //     }
-  //   },
-  // };
+        // 星星在雪碧图中的 y 坐标
+        this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
+            NightMode.config.STAR_SIZE * i;
+      }
+    },
+  };
 
   /**
    * 障碍物类
@@ -1212,8 +1200,8 @@
     // 云的频率
     this.cloudFrequency = Cloud.config.CLOUD_FREQUENCY;
 
-    // // 夜晚模式
-    // this.nightMode = null;
+    // 夜晚模式
+    this.nightMode = null;
 
     // 云
     this.clouds = [];
@@ -1232,12 +1220,12 @@
     init: function () {
       this.addCloud();
       this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON);
-      // this.nightMode = new NightMode(this.canvas, this.spritePos.MOON,
-      //   this.dimensions.WIDTH);
+      this.nightMode = new NightMode(this.canvas, this.spritePos.MOON,
+        this.dimensions.WIDTH);
     },
     update: function (deltaTime, currentSpeed, updateObstacles, showNightMode) {
       this.horizonLine.update(deltaTime, currentSpeed);
-      // this.nightMode.update(showNightMode);
+      this.nightMode.update(showNightMode);
       this.updateCloud(deltaTime, currentSpeed);
 
       if (updateObstacles) {

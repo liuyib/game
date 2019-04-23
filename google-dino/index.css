@@ -25,23 +25,15 @@
   display: none;
 }
 
-.offline {
+body {
   transition: filter 1.5s cubic-bezier(0.65, 0.05, 0.36, 1),
               background-color 1.5s cubic-bezier(0.65, 0.05, 0.36, 1);
   will-change: filter, background-color;
 }
 
-.offline body {
-  transition: background-color 1.5s cubic-bezier(0.65, 0.05, 0.36, 1);
-}
-
-.offline.inverted {
-  filter: invert(1);
-  background: #000;
-}
-
-.offline.inverted body {
-  background: #fff;
+.inverted {
+  filter: invert(100%);
+  background-color: #000;
 }
 
 .offline .runner-container {
