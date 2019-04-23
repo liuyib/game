@@ -2,7 +2,6 @@
   'use strict';
 
   var log = console.log.bind(console);
-  var timer = null;
 
   function Runner(containerSelector, optConfig) {
     // 获取游戏的 “根” DOM 节点，整个游戏都会输出到这个节点里
@@ -53,7 +52,7 @@
     ARCADE_MODE_INITIAL_TOP_POSITION: 35,    // 街机模式时，canvas 距顶部的初始距离
     ARCADE_MODE_TOP_POSITION_PERCENT: 0.1,   // 街机模式时，canvas 距页面顶部的距离，占屏幕高度的百分比
     INVERT_FADE_DURATION: 12000,             // 夜晚模式的持续时间
-    INVERT_DISTANCE: 100,                    // 触发夜晚模式的距离
+    INVERT_DISTANCE: 700,                    // 触发夜晚模式的距离
     // RESOURCE_TEMPLATE_ID: 'audio-resources', // 音频元素 ID
     CLEAR_TIME: 3000,                        // 开始游戏后，最快绘制障碍物的时间
     MAX_OBSTACLE_DUPLICATION: 2,             // 障碍物相邻的最大重复数
@@ -956,7 +955,7 @@
       if (activated && (this.opacity < 1 || this.opacity === 0)) {
         this.opacity += NightMode.config.FADE_SPEED;
       } else if (this.opacity > 0) { // 淡出
-        // this.opacity -= NightMode.config.FADE_SPEED;
+        this.opacity -= NightMode.config.FADE_SPEED;
       }
 
       // 设置月亮和星星的位置

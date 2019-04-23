@@ -43,7 +43,6 @@ body {
   max-width: 600px;
   height: var(--canvas-default-height);
   overflow: hidden;
-  direction: ltr;
 }
 
 .offline .runner-canvas {
