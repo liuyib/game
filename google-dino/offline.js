@@ -196,7 +196,7 @@
     playIntro: function () {
       if (!this.activated && !this.crashed) {
         this.playingIntro = true;   // 正在执行开场动画
-        this.tRex.playingIntro = true; // 小恐龙执行开场动画
+        // this.tRex.playingIntro = true; // 小恐龙执行开场动画
 
         // 定义 CSS 动画关键帧
         var keyframes = '@-webkit-keyframes intro { ' +
@@ -227,7 +227,7 @@
       
       this.runningTime = 0;
       this.playingIntro = false; // 开场动画结束
-      this.tRex.playingIntro = false;
+      // this.tRex.playingIntro = false;
       this.containerEl.style.webkitAnimation = '';
 
       window.addEventListener(Runner.events.BLUR,
@@ -253,7 +253,7 @@
       if (!this.crashed) {
         this.setPlayStatus(true);
         this.paused = false;
-        this.tRex.reset();
+        // this.tRex.reset();
         this.time = getTimeStamp();
         this.update();
       }
@@ -287,15 +287,16 @@
 
         this.clearCanvas();
 
-        if (this.tRex.jumping) {
-          this.tRex.updateJump(deltaTime);
-        }
+        // if (this.tRex.jumping) {
+        //   this.tRex.updateJump(deltaTime);
+        // }
 
         this.runningTime += deltaTime;
         var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
 
         // 刚开始 this.playingIntro 未定义 !this.playingIntro 为真
-        if (this.tRex.jumpCount == 1 && !this.playingIntro) {
+        if (!this.playingIntro) {
+        // if (this.tRex.jumpCount == 1 && !this.playingIntro) {
           this.playIntro(); // 执行开场动画
         }
 
@@ -346,6 +347,7 @@
       }
 
       // 游戏变为开始状态或小恐龙还没有眨三次眼
+      // if (this.playing) {
       if (this.playing || (!this.activated &&
         this.tRex.blinkCount < Runner.config.MAX_BLINK_COUNT)) {
         this.tRex.update(deltaTime);
@@ -383,9 +385,9 @@
           case events.KEYDOWN:
             this.onKeyDown(e);
             break;
-          case events.KEYUP:
-            this.onKeyUp(e);
-            break;
+          // case events.KEYUP:
+          //   this.onKeyUp(e);
+          //   break;
           default:
             break;
         }
@@ -402,36 +404,37 @@
             this.update();
           }
 
-          // 开始跳跃
-          if (!this.tRex.jumping && !this.tRex.ducking) {
-            this.tRex.startJump(this.currentSpeed);
-          }
-        } else if (this.playing && Runner.keyCodes.DUCK[e.keyCode]) {
-          e.preventDefault();
-
-          if (this.tRex.jumping) {
-            this.tRex.setSpeedDrop(); // 加速下落
-          } else if (!this.tRex.jumping && !this.tRex.ducking) {
-            this.tRex.setDuck(true);  // 躲闪状态
-          }
+          // // 开始跳跃
+          // if (!this.tRex.jumping && !this.tRex.ducking) {
+          //   this.tRex.startJump(this.currentSpeed);
+          // }
         }
+        // else if (this.playing && Runner.keyCodes.DUCK[e.keyCode]) {
+        //   e.preventDefault();
+
+        //   if (this.tRex.jumping) {
+        //     this.tRex.setSpeedDrop(); // 加速下落
+        //   } else if (!this.tRex.jumping && !this.tRex.ducking) {
+        //     this.tRex.setDuck(true);  // 躲闪状态
+        //   }
+        // }
       }
     },
-    onKeyUp: function(e) {
-      var keyCode = String(e.keyCode);
-      var isjumpKey = Runner.keyCodes.JUMP[keyCode];
+    // onKeyUp: function(e) {
+    //   var keyCode = String(e.keyCode);
+    //   var isjumpKey = Runner.keyCodes.JUMP[keyCode];
   
-      if (this.isRunning() && isjumpKey) {        // 跳跃
-        this.tRex.endJump();
-      } else if (Runner.keyCodes.DUCK[keyCode]) { // 躲避状态
-        this.tRex.speedDrop = false;
-        this.tRex.setDuck(false);
-      }
-    },
-    // 是否游戏正在进行
-    isRunning: function() {
-      return !!this.raqId;
-    },
+    //   if (this.isRunning() && isjumpKey) {        // 跳跃
+    //     this.tRex.endJump();
+    //   } else if (Runner.keyCodes.DUCK[keyCode]) { // 躲避状态
+    //     this.tRex.speedDrop = false;
+    //     this.tRex.setDuck(false);
+    //   }
+    // },
+    // // 是否游戏正在进行
+    // isRunning: function() {
+    //   return !!this.raqId;
+    // },
     setPlayStatus: function (isPlaying) {
       this.playing = isPlaying;
     },
@@ -1316,19 +1319,18 @@
 
   Trex.prototype = {
     init: function() {
+      // 获取小恐龙站在地面上时的 y 坐标
       this.groundYPos = Runner.defaultDimensions.HEIGHT - this.config.HEIGHT -
           Runner.config.BOTTOM_PAD;
-      this.yPos = this.groundYPos;
-      // 最低跳跃高度
-      this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT;
+      this.yPos = this.groundYPos;         // 小恐龙的 y 坐标初始化
   
-      this.draw(0, 0);                     // 绘制雪碧图中第一帧小恐龙图片
-      this.update(0, Trex.status.WAITING); // 初始为等待中状态
+      this.draw(0, 0);                     // 绘制小恐龙的第一帧图片
+      this.update(0, Trex.status.WAITING); // 初始为等待状态
     },
     /**
      * 绘制小恐龙
-     * @param {Number} x 相对于雪碧图中第一帧小恐龙图片的 x 坐标
-     * @param {Number} y 相对于雪碧图中第一帧小恐龙图片的 y 坐标
+     * @param {Number} x 当前帧相对于第一帧的 x 坐标
+     * @param {Number} y 当前帧相对于第一帧的 y 坐标
      */
     draw: function(x, y) {
       // 在雪碧图中的坐标
@@ -1390,32 +1392,33 @@
         }
       }
 
-      // 正在执行开场动画，将小恐龙向右移动 50 像素
-      if (this.playingIntro && this.xPos < this.config.START_X_POS) {
-        this.xPos += Math.round((this.config.START_X_POS /
-          this.config.INTRO_DURATION) * deltaTime);
-      }
+      // // 正在执行开场动画，将小恐龙向右移动 50 像素
+      // if (this.playingIntro && this.xPos < this.config.START_X_POS) {
+      //   this.xPos += Math.round((this.config.START_X_POS /
+      //     this.config.INTRO_DURATION) * deltaTime);
+      // }
 
       if (this.status == Trex.status.WAITING) {
         // 小恐龙眨眼
         this.blink(getTimeStamp());
       } else {
-        // 根据动画帧的坐标进行绘制
+        // 绘制动画帧
         this.draw(this.currentAnimFrames[this.currentFrame], 0);
       }
 
-      // 更新动画帧
       if (this.timer >= this.msPerFrame) {
+        // 更新当前动画帧
         this.currentFrame = this.currentFrame ==
           this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
+        // 重置计时器
         this.timer = 0;
       }
 
-      // 加速下落到地面后，如果仍按着下键时
-      if (this.speedDrop && this.yPos == this.groundYPos) {
-        this.speedDrop = false;
-        this.setDuck(true);
-      }
+      // // 加速下落到地面后，如果仍按着下键时
+      // if (this.speedDrop && this.yPos == this.groundYPos) {
+      //   this.speedDrop = false;
+      //   this.setDuck(true);
+      // }
     },
     // 设置眨眼间隔的时间
     setBlinkDelay: function() {
@@ -1429,90 +1432,91 @@
       if (deltaTime >= this.blinkDelay) {
         this.draw(this.currentAnimFrames[this.currentFrame], 0);
         
-        // 正在眨眼中
+        // 正在眨眼
         if (this.currentFrame == 1) {
+          log('眨眼');
           this.setBlinkDelay();      // 重新设置眨眼间隔的时间
-          this.animStartTime = time; // 更新眨眼开始的时间
+          this.animStartTime = time; // 更新眨眼动画开始的时间
           this.blinkCount++;         // 眨眼次数加一
         }
       }
     },
-    // 设置小恐龙躲闪时的状态
-    setDuck: function(isDucking) {
-      if (isDucking && this.status != Trex.status.DUCKING) { // 躲闪状态
-        this.update(0, Trex.status.DUCKING);
-        this.ducking = true;
-      } else if (this.status == Trex.status.DUCKING) { // 奔跑状态
-        this.update(0, Trex.status.RUNNING);
-        this.ducking = false;
-      }
-    },
-    // 更新小恐龙跳跃时的动画
-    updateJump: function(deltaTime) {
-      var msPerFrame = Trex.animFrames[this.status].msPerFrame; // 获取当前状态的帧率
-      var framesElapsed = deltaTime / msPerFrame;
+    // // 设置小恐龙躲闪时的状态
+    // setDuck: function(isDucking) {
+    //   if (isDucking && this.status != Trex.status.DUCKING) { // 躲闪状态
+    //     this.update(0, Trex.status.DUCKING);
+    //     this.ducking = true;
+    //   } else if (this.status == Trex.status.DUCKING) { // 奔跑状态
+    //     this.update(0, Trex.status.RUNNING);
+    //     this.ducking = false;
+    //   }
+    // },
+    // // 更新小恐龙跳跃时的动画
+    // updateJump: function(deltaTime) {
+    //   var msPerFrame = Trex.animFrames[this.status].msPerFrame; // 获取当前状态的帧率
+    //   var framesElapsed = deltaTime / msPerFrame;
   
-      // 加速下落
-      if (this.speedDrop) {
-        this.yPos += Math.round(this.jumpVelocity *
-          this.config.SPEED_DROP_COEFFICIENT * framesElapsed);
-      } else {
-        this.yPos += Math.round(this.jumpVelocity * framesElapsed);
-      }
+    //   // 加速下落
+    //   if (this.speedDrop) {
+    //     this.yPos += Math.round(this.jumpVelocity *
+    //       this.config.SPEED_DROP_COEFFICIENT * framesElapsed);
+    //   } else {
+    //     this.yPos += Math.round(this.jumpVelocity * framesElapsed);
+    //   }
   
-      // 跳跃的速度受重力的影响，向上逐渐减小，然后反向
-      this.jumpVelocity += this.config.GRAVITY * framesElapsed;
+    //   // 跳跃的速度受重力的影响，向上逐渐减小，然后反向
+    //   this.jumpVelocity += this.config.GRAVITY * framesElapsed;
   
-      // 达到了最低允许的跳跃高度
-      if (this.yPos < this.minJumpHeight || this.speedDrop) {
-        this.reachedMinHeight = true;
-      }
+    //   // 达到了最低允许的跳跃高度
+    //   if (this.yPos < this.minJumpHeight || this.speedDrop) {
+    //     this.reachedMinHeight = true;
+    //   }
   
-      // 达到了最高允许的跳跃高度
-      if (this.yPos < this.config.MAX_JUMP_HEIGHT || this.speedDrop) {
-        this.endJump(); // 结束跳跃
-      }
+    //   // 达到了最高允许的跳跃高度
+    //   if (this.yPos < this.config.MAX_JUMP_HEIGHT || this.speedDrop) {
+    //     this.endJump(); // 结束跳跃
+    //   }
   
-      // 重新回到地面，跳跃完成
-      if (this.yPos > this.groundYPos) {
-        this.reset();     // 重置小恐龙的状态
-        this.jumpCount++; // 跳跃次数加一
-      }
-    },
-    // 重置小恐龙状态
-    reset: function() {
-      this.yPos = this.groundYPos;
-      this.jumpVelocity = 0;
-      this.jumping = false;
-      this.ducking = false;
-      this.update(0, Trex.status.RUNNING);
-      this.speedDrop = false;
-      this.jumpCount = 0;
-    },
-    // 跳跃开始
-    startJump: function(speed) {
-      if (!this.jumping) {
-        this.update(0, Trex.status.JUMPING);
+    //   // 重新回到地面，跳跃完成
+    //   if (this.yPos > this.groundYPos) {
+    //     this.reset();     // 重置小恐龙的状态
+    //     this.jumpCount++; // 跳跃次数加一
+    //   }
+    // },
+    // // 重置小恐龙状态
+    // reset: function() {
+    //   this.yPos = this.groundYPos;
+    //   this.jumpVelocity = 0;
+    //   this.jumping = false;
+    //   this.ducking = false;
+    //   this.update(0, Trex.status.RUNNING);
+    //   this.speedDrop = false;
+    //   this.jumpCount = 0;
+    // },
+    // // 跳跃开始
+    // startJump: function(speed) {
+    //   if (!this.jumping) {
+    //     this.update(0, Trex.status.JUMPING);
         
-        // 根据游戏的速度调整跳跃的速度
-        this.jumpVelocity = this.config.INITIAL_JUMP_VELOCITY - (speed / 10);
-        this.jumping = true;
-        this.reachedMinHeight = false;
-        this.speedDrop = false;
-      }
-    },
-    // 跳跃结束
-    endJump: function() {
-      if (this.reachedMinHeight &&
-          this.jumpVelocity < this.config.DROP_VELOCITY) {
-        this.jumpVelocity = this.config.DROP_VELOCITY; // 下落速度重置为默认
-      }
-    },
-    // 设置小恐龙为加速下落，立即取消当前的跳跃
-    setSpeedDrop: function() {
-      this.speedDrop = true;
-      this.jumpVelocity = 1;
-    },
+    //     // 根据游戏的速度调整跳跃的速度
+    //     this.jumpVelocity = this.config.INITIAL_JUMP_VELOCITY - (speed / 10);
+    //     this.jumping = true;
+    //     this.reachedMinHeight = false;
+    //     this.speedDrop = false;
+    //   }
+    // },
+    // // 跳跃结束
+    // endJump: function() {
+    //   if (this.reachedMinHeight &&
+    //       this.jumpVelocity < this.config.DROP_VELOCITY) {
+    //     this.jumpVelocity = this.config.DROP_VELOCITY; // 下落速度重置为默认
+    //   }
+    // },
+    // // 设置小恐龙为加速下落，立即取消当前的跳跃
+    // setSpeedDrop: function() {
+    //   this.speedDrop = true;
+    //   this.jumpVelocity = 1;
+    // },
   };
 
   /**
