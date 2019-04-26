@@ -1,68 +1,66 @@
 (function () {
   'use strict';
 
-  var log = console.log.bind(console);
-
-  function Runner(containerSelector, optConfig) {
+  /**
+   * 游戏主体类，控制游戏的整体逻辑
+   * @param {String} containerSelector 画布外层容器的选择器
+   * @param {Object} opt_config 配置选项
+   */
+  function Runner(containerSelector, opt_config) {
     // 获取游戏的 “根” DOM 节点，整个游戏都会输出到这个节点里
     this.outerContainerEl = document.querySelector(containerSelector);
     // canvas 的外层容器
     this.containerEl = null;
   
-    this.config = optConfig || Runner.config;
+    this.config = opt_config || Runner.config;
     this.dimensions = Runner.defaultDimensions;
+
+    this.distanceMeter = null;             // 距离计数类
+    this.distanceRan = 0;                  // 游戏移动距离
+    this.highestScore = 0;                 // 最高分
+
+    this.tRex = null;                      // 小恐龙
   
     this.time = 0;                         // 时钟计时器
+    this.currentSpeed = this.config.SPEED; // 当前的速度
+
     this.runningTime = 0;                  // 游戏运行的时间
     this.msPerFrame = 1000 / FPS;          // 每帧的时间
-    this.currentSpeed = this.config.SPEED; // 当前的速度
-    
-    this.obstacles = [];     // 存储障碍物
-  
-    this.activated  = false; // 游戏彩蛋是否被激活（没有被激活时，游戏不会显示出来）
-    this.playing = false;    // 游戏是否进行中
-    this.crashed = false;    // 小恐龙是否碰到了障碍物
-    this.paused = false      // 游戏是否暂停
 
-    this.distanceMeter = null;     // 距离计数类
-    this.distanceRan = 0;          // 游戏移动距离
-    this.highestScore = 0;         // 最高分
-    
-    // this.soundFx = {};             // 音频 FX.
-    // this.audioContext = null;      // 全局音频上下文
+    this.inverted = false;                 // 是否开启夜晚模式
+    this.invertTimer = 0;                  // 夜晚模式的时间
 
-    this.inverted = false;         // 是否开启夜晚模式
-    this.invertTimer = 0;          // 夜晚模式的时间
-
-    this.tRex = null;              // 小恐龙
+    this.activated  = false;               // 游戏彩蛋是否被激活（没有被激活时，游戏不会显示出来）
+    this.playing = false;                  // 游戏是否进行中
+    this.crashed = false;                  // 小恐龙是否碰到了障碍物
+    this.paused = false                    // 游戏是否暂停
   
     // 加载雪碧图，并初始化游戏
     this.loadImages();
   }
 
   window['Runner'] = Runner;
-
+  
   var DEFAULT_WIDTH = 600;
   var FPS = 60;
   
-  // 游戏参数配置
+  // 游戏配置参数
   Runner.config = {
-    GAP_COEFFICIENT: 0.6,                    // 障碍物间隙系数
-    SPEED: 6,                                // 游戏初始速度
-    MAX_SPEED: 13,                           // 游戏的最大速度
-    ACCELERATION: 0.001,                     // 加速度
-    ARCADE_MODE_INITIAL_TOP_POSITION: 35,    // 街机模式时，canvas 距顶部的初始距离
-    ARCADE_MODE_TOP_POSITION_PERCENT: 0.1,   // 街机模式时，canvas 距页面顶部的距离，占屏幕高度的百分比
-    INVERT_FADE_DURATION: 12000,             // 夜晚模式的持续时间
-    INVERT_DISTANCE: 700,                    // 触发夜晚模式的距离
-    // RESOURCE_TEMPLATE_ID: 'audio-resources', // 音频元素 ID
-    CLEAR_TIME: 3000,                        // 开始游戏后，最快绘制障碍物的时间
-    MAX_OBSTACLE_DUPLICATION: 2,             // 障碍物相邻的最大重复数
-    BOTTOM_PAD: 10,                          // 小恐龙距 canvas 底部的距离
-    MAX_BLINK_COUNT: 3,                      // 小恐龙的最大眨眼次数
+    SPEED: 6, // 移动速度
+    MAX_SPEED: 13,                         // 游戏的最大速度
+    ACCELERATION: 0.001,                   // 加速度
+    ARCADE_MODE_INITIAL_TOP_POSITION: 35,  // 街机模式时，canvas 距顶部的初始距离
+    ARCADE_MODE_TOP_POSITION_PERCENT: 0.1, // 街机模式时，canvas 距页面顶部的距离，占屏幕高度的百分比
+    GAP_COEFFICIENT: 0.6,                  // 障碍物间隙系数
+    MAX_OBSTACLE_DUPLICATION: 2,           // 障碍物相邻的最大重复数
+    CLEAR_TIME: 3000,                      // 游戏开始后，等待三秒再绘制障碍物
+    INVERT_FADE_DURATION: 12000,           // 夜晚模式的持续时间
+    INVERT_DISTANCE: 100,                  // 触发夜晚模式的距离
+    BOTTOM_PAD: 10,                        // 小恐龙距 canvas 底部的距离
+    MAX_BLINK_COUNT: 3,                    // 小恐龙的最大眨眼次数
   };
-
-  // 游戏的默认尺寸
+  
+  // 游戏画布的默认尺寸
   Runner.defaultDimensions = {
     WIDTH: DEFAULT_WIDTH,
     HEIGHT: 150,
@@ -73,47 +71,40 @@
     ARCADE_MODE: 'arcade-mode',
     CONTAINER: 'runner-container',
     CANVAS: 'runner-canvas',
-    PLAYER: '', // 预留出的 className，可以用来自定义 canvas 的样式
+    PLAYER: '', // 预留出的 className，用来控制 canvas 的样式
     INVERTED: 'inverted',
   };
-
-  // 雪碧图中小图片的坐标信息
+  
+  // 雪碧图中图片的坐标信息
   Runner.spriteDefinition = {
     LDPI: {
-      HORIZON: {x: 2, y: 54},
+      HORIZON: { x: 2, y: 54 },     // 地面
       CLOUD: {x: 86, y: 2},
       CACTUS_SMALL: {x: 228, y: 2}, // 小仙人掌
       CACTUS_LARGE: {x: 332, y: 2}, // 大仙人掌
       PTERODACTYL: {x: 134, y: 2},  // 翼龙
+      TEXT_SPRITE: {x: 655, y: 2},  // 文字
       MOON: {x: 484, y: 2},
       STAR: {x: 645, y: 2},
-      TEXT_SPRITE: {x: 655, y: 2},
       TREX: {x: 848, y: 2},         // 小恐龙
     },
   };
-
-  // // 音频标签的 ID
-  // Runner.sounds = {
-  //   BUTTON_PRESS: 'offline-sound-press',
-  //   HIT: 'offline-sound-hit',
-  //   SCORE: 'offline-sound-reached'
-  // };
-
+  
   // 游戏中用到的键盘码
   Runner.keyCodes = {
-    JUMP: {'38': 1, '32': 1}, // Up, Space
-    DUCK: {'40': 1},          // Down
-    RESTART: {'13': 1},       // Enter
+    JUMP: { '38': 1, '32': 1 }, // Up, Space
+    DUCK: { '40': 1 },          // Down
+    RESTART: { '13': 1 },       // Enter
   };
-
-  // 游戏中用到的事件名称
+  
+  // 游戏中用到的事件
   Runner.events = {
     ANIMATION_END: 'webkitAnimationEnd',
     KEYDOWN: 'keydown',
     KEYUP: 'keyup',
     LOAD: 'load',
     BLUR: 'blur',
-    FOCUS: 'focus',
+    FOCUS: 'focus'
   };
 
   Runner.prototype = {
@@ -121,15 +112,15 @@
       // 生成 canvas 容器元素
       this.containerEl = document.createElement('div');
       this.containerEl.className = Runner.classes.CONTAINER;
-
+  
       // 生成 canvas
       this.canvas = createCanvas(this.containerEl, this.dimensions.WIDTH,
         this.dimensions.HEIGHT, Runner.classes.PLAYER);
-
+  
       this.ctx = this.canvas.getContext('2d');
       this.ctx.fillStyle = '#f7f7f7';
       this.ctx.fill();
-
+  
       // 加载背景类 Horizon
       this.horizon = new Horizon(this.canvas, this.spriteDef,
         this.dimensions, this.config.GAP_COEFFICIENT);
@@ -137,24 +128,26 @@
       // 加载距离计数器类 DistanceMeter
       this.distanceMeter = new DistanceMeter(this.canvas,
         this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
-
+      
       // 加载小恐龙类
       this.tRex = new Trex(this.canvas, this.spriteDef.TREX);
-
+  
       // 将游戏添加到页面中
       this.outerContainerEl.appendChild(this.containerEl);
 
-      // 开始监听用户动作
-      this.startListening();
-
       // 更新 canvas
       this.update();
+
+      // 开始监听用户动作
+      this.startListening();
     },
     loadImages() {
+      // 图片在雪碧图中的坐标
       this.spriteDef = Runner.spriteDefinition.LDPI;
+
       // 获取雪碧图
       Runner.imageSprite = document.getElementById('offline-resources-1x');
-
+  
       // 当图片加载完成（complete 是 DOM 中 Image 对象自带的一个属性）
       if (Runner.imageSprite.complete) {
         this.init();
@@ -163,24 +156,6 @@
           this.init.bind(this));
       }
     },
-    // loadSounds: function () {
-    //   this.audioContext = new AudioContext();
-
-    //   var resourceTemplate =
-    //     document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
-
-    //   for (var sound in Runner.sounds) {
-    //     var soundSrc =
-    //       resourceTemplate.getElementById(Runner.sounds[sound]).src;
-    //     soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
-    //     var buffer = decodeBase64ToArrayBuffer(soundSrc);
-
-    //     // 异步，不能保证数组中元素的顺序
-    //     this.audioContext.decodeAudioData(buffer, function (index, audioData) {
-    //       this.soundFx[index] = audioData;
-    //     }.bind(this, sound));
-    //   }
-    // },
     startListening: function () {
       document.addEventListener(Runner.events.KEYDOWN, this);
       document.addEventListener(Runner.events.KEYUP, this);
@@ -195,8 +170,8 @@
      */
     playIntro: function () {
       if (!this.activated && !this.crashed) {
-        this.playingIntro = true;   // 正在执行开场动画
-        // this.tRex.playingIntro = true; // 小恐龙执行开场动画
+        this.playingIntro = true; // 正在执行开场动画
+        this.tRex.playingIntro = true; // 小恐龙执行开场动画
 
         // 定义 CSS 动画关键帧
         var keyframes = '@-webkit-keyframes intro { ' +
@@ -209,25 +184,25 @@
         this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
         this.containerEl.style.width = this.dimensions.WIDTH + 'px';
 
-        // 当触发 webkitAnimationEnd 事件时，执行 startGame
+        // 监听动画。当触发结束事件时，设置游戏为开始状态
         this.containerEl.addEventListener(Runner.events.ANIMATION_END,
           this.startGame.bind(this));
 
         this.setPlayStatus(true); // 设置游戏为进行状态
         this.activated = true;    // 游戏彩蛋被激活
       } else if (this.crashed) {
+        // 这个 restart 方法的逻辑这里先不实现
         this.restart();
       }
     },
     /**
-     * 开始进行游戏
+     * 更新游戏为开始状态
      */
     startGame: function () {
       this.setArcadeMode();      // 进入街机模式
       
-      this.runningTime = 0;
       this.playingIntro = false; // 开场动画结束
-      // this.tRex.playingIntro = false;
+      this.tRex.playingIntro = false; // 小恐龙的开场动画结束
       this.containerEl.style.webkitAnimation = '';
 
       window.addEventListener(Runner.events.BLUR,
@@ -253,9 +228,9 @@
       if (!this.crashed) {
         this.setPlayStatus(true);
         this.paused = false;
-        // this.tRex.reset();
         this.time = getTimeStamp();
         this.update();
+        this.tRex.reset();
       }
     },
     stop: function () {
@@ -264,39 +239,29 @@
       cancelAnimationFrame(this.raqId);
       this.raqId = 0;
     },
-    // playSound: function (soundBuffer) {
-    //   if (soundBuffer) {
-    //     var sourceNode = this.audioContext.createBufferSource();
-    //     sourceNode.buffer = soundBuffer;
-    //     sourceNode.connect(this.audioContext.destination);
-    //     sourceNode.start(0);
-    //   }
-    // },
     /**
      * 更新游戏帧并进行下一次更新
      */
     update: function () {
       this.updatePending = false; // 等待更新
-      
+
       var now = getTimeStamp();
       var deltaTime = now - (this.time || now);
-      
+
       this.time = now;
 
       if (this.playing) {
-
         this.clearCanvas();
 
-        // if (this.tRex.jumping) {
-        //   this.tRex.updateJump(deltaTime);
-        // }
+        if (this.tRex.jumping) {
+          this.tRex.updateJump(deltaTime);
+        }
 
         this.runningTime += deltaTime;
         var hasObstacles = this.runningTime > this.config.CLEAR_TIME;
-
+        
         // 刚开始 this.playingIntro 未定义 !this.playingIntro 为真
-        if (!this.playingIntro) {
-        // if (this.tRex.jumpCount == 1 && !this.playingIntro) {
+        if (this.tRex.jumpCount == 1 && !this.playingIntro) {
           this.playIntro(); // 执行开场动画
         }
 
@@ -310,17 +275,13 @@
         }
 
         this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
-  
+
         if (this.currentSpeed < this.config.MAX_SPEED) {
           this.currentSpeed += this.config.ACCELERATION;
         }
 
         var playAchievementSound = this.distanceMeter.update(deltaTime,
           Math.ceil(this.distanceRan));
-
-        // if (playAchievementSound) {
-        //   this.playSound(this.soundFx.SCORE);
-        // }
 
         // 夜晚模式
         if (this.invertTimer > this.config.INVERT_FADE_DURATION) { // 夜晚模式结束
@@ -347,7 +308,6 @@
       }
 
       // 游戏变为开始状态或小恐龙还没有眨三次眼
-      // if (this.playing) {
       if (this.playing || (!this.activated &&
         this.tRex.blinkCount < Runner.config.MAX_BLINK_COUNT)) {
         this.tRex.update(deltaTime);
@@ -371,72 +331,11 @@
 
       if (this.distanceRan > this.highestScore) {
         this.highestScore = Math.ceil(this.distanceRan);
-        this.distanceMeter.setHighScore(this.highestScore);
+        this.distanceMeter.setHighScore(this.highestScore); // 保存最高分
       }
 
-      // 重置时钟
+      // 重置时间
       this.time = getTimeStamp();
-    },
-    // 用来处理 EventTarget（这里就是 Runner 类） 上发生的事件
-    // 当事件被发送到 EventListener 时，浏览器就会自动调用这个方法
-    handleEvent: function (e) {
-      return (function (eType, events) {
-        switch (eType) {
-          case events.KEYDOWN:
-            this.onKeyDown(e);
-            break;
-          // case events.KEYUP:
-          //   this.onKeyUp(e);
-          //   break;
-          default:
-            break;
-        }
-      }.bind(this))(e.type, Runner.events);
-    },
-    onKeyDown: function (e) {
-      if (!this.crashed && !this.paused) {
-        if (Runner.keyCodes.JUMP[e.keyCode]) {
-          e.preventDefault();
-
-          if (!this.playing) {
-            // this.loadSounds();
-            this.setPlayStatus(true);
-            this.update();
-          }
-
-          // // 开始跳跃
-          // if (!this.tRex.jumping && !this.tRex.ducking) {
-          //   this.tRex.startJump(this.currentSpeed);
-          // }
-        }
-        // else if (this.playing && Runner.keyCodes.DUCK[e.keyCode]) {
-        //   e.preventDefault();
-
-        //   if (this.tRex.jumping) {
-        //     this.tRex.setSpeedDrop(); // 加速下落
-        //   } else if (!this.tRex.jumping && !this.tRex.ducking) {
-        //     this.tRex.setDuck(true);  // 躲闪状态
-        //   }
-        // }
-      }
-    },
-    // onKeyUp: function(e) {
-    //   var keyCode = String(e.keyCode);
-    //   var isjumpKey = Runner.keyCodes.JUMP[keyCode];
-  
-    //   if (this.isRunning() && isjumpKey) {        // 跳跃
-    //     this.tRex.endJump();
-    //   } else if (Runner.keyCodes.DUCK[keyCode]) { // 躲避状态
-    //     this.tRex.speedDrop = false;
-    //     this.tRex.setDuck(false);
-    //   }
-    // },
-    // // 是否游戏正在进行
-    // isRunning: function() {
-    //   return !!this.raqId;
-    // },
-    setPlayStatus: function (isPlaying) {
-      this.playing = isPlaying;
     },
     /**
      * 设置进入街机模式时 canvas 容器的缩放比例
@@ -457,7 +356,7 @@
           translateY + 'px)';
     },
     /**
-     * 开启街机模式（游戏占满屏幕）
+     * 开启街机模式（全屏）
      */
     setArcadeMode: function () {
       document.body.classList.add(Runner.classes.ARCADE_MODE);
@@ -480,8 +379,67 @@
           this.invertTrigger);
       }
     },
-  };
+    // 用来处理 EventTarget（这里就是 Runner 类） 上发生的事件
+    // 当事件被发送到 EventListener 时，浏览器就会自动调用这个方法
+    handleEvent: function (e) {
+      return (function (eType, events) {
+        switch (eType) {
+          case events.KEYDOWN:
+            this.onKeyDown(e);
+            break;
+          case events.KEYUP:
+            this.onKeyUp(e);
+            break;
+          default:
+            break;
+        }
+      }.bind(this))(e.type, Runner.events);
+    },
+    onKeyDown: function (e) {
+      if (!this.crashed && !this.paused) {
+        if (Runner.keyCodes.JUMP[e.keyCode]) {
+          e.preventDefault();
+  
+          if (!this.playing) {
+            this.setPlayStatus(true);
+            this.update();
+          }
 
+          // 开始跳跃
+          if (!this.tRex.jumping && !this.tRex.ducking) {
+            this.tRex.startJump(this.currentSpeed);
+          }
+        } else if (this.playing && Runner.keyCodes.DUCK[e.keyCode]) {
+          e.preventDefault();
+
+          if (this.tRex.jumping) {
+            this.tRex.setSpeedDrop(); // 加速下落
+          } else if (!this.tRex.jumping && !this.tRex.ducking) {
+            this.tRex.setDuck(true);  // 进入躲闪状态
+          }
+        }
+      }      
+    },
+    onKeyUp: function(e) {
+      var keyCode = String(e.keyCode);
+      var isjumpKey = Runner.keyCodes.JUMP[keyCode];
+  
+      if (this.isRunning() && isjumpKey) {        // 跳跃
+        this.tRex.endJump();
+      } else if (Runner.keyCodes.DUCK[keyCode]) { // 躲避状态
+        this.tRex.speedDrop = false;
+        this.tRex.setDuck(false);
+      }
+    },
+    // 是否游戏正在进行
+    isRunning: function() {
+      return !!this.raqId;
+    },
+    setPlayStatus: function (isPlaying) {
+      this.playing = isPlaying;
+    },
+  };
+  
   // ==========================================
   // 工具函数
   // ==========================================
@@ -491,21 +449,26 @@
    * @param {HTMLElement} container canva 的容器
    * @param {Number} width canvas 的宽度
    * @param {Number} height canvas 的高度
-   * @param {String} optClassName 给 canvas 添加的类名（可选）
+   * @param {String} opt_className 给 canvas 添加的类名（可选）
    * @return {HTMLCanvasElement}
    */
-  function createCanvas(container, width, height, optClassName) {
+  function createCanvas(container, width, height, opt_className) {
     var canvas = document.createElement('canvas');
-    canvas.className = optClassName
-      ? optClassName + ' ' + Runner.classes.CANVAS
+    canvas.className = opt_className
+      ? opt_className + ' ' + Runner.classes.CANVAS
       : Runner.classes.CANVAS;
     canvas.width = width;
     canvas.height = height;
     container.appendChild(canvas);
-
+  
     return canvas;
   }
 
+  // 获取时间戳
+  function getTimeStamp() {
+    return performance.now();
+  }
+  
   /**
    * 获取 [min, max] 之间的随机数
    * @param {Number} min 最小值
@@ -516,48 +479,33 @@
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  function getTimeStamp() {
-    return Math.round(performance.now());
-  }
-
-  // /**
-  //  * 将 base64编码转为 ArrayBuffer
-  //  * @param {String} base64String Base64 字符串
-  //  */
-  // function decodeBase64ToArrayBuffer(base64String) {
-  //   var len = (base64String.length / 4) * 3;
-  //   var str = atob(base64String);
-  //   var arrayBuffer = new ArrayBuffer(len);
-  //   var bytes = new Uint8Array(arrayBuffer);
-  
-  //   for (var i = 0; i < len; i++) {
-  //     bytes[i] = str.charCodeAt(i);
-  //   }
-  //   return bytes.buffer;
-  // }
-
   // ==========================================
 
+  /**
+   * Horizon 背景类
+   * @param {HTMLCanvasElement} canvas 画布
+   * @param {Object} spritePos 雪碧图中的位置
+   */
   function HorizonLine(canvas, spritePos) {
     this.canvas = canvas;
     this.ctx = this.canvas.getContext('2d');
-
+  
     this.dimensions = {};       // 地面的尺寸
     this.spritePos = spritePos; // 雪碧图中地面的位置
     this.sourceXPos = [];       // 雪碧图中地面的两种地形的 x 坐标
     this.xPos = [];             // canvas 中地面的 x 坐标
     this.yPos = 0;              // canvas 中地面的 y 坐标
-
+  
     this.bumpThreshold = 0.5;   // 随机地形系数，控制两种地形的出现频率
-
+  
     this.init();
     this.draw();
   }
-
+  
   HorizonLine.dimensions = {
     WIDTH: 600,
     HEIGHT: 12,
-    YPOS: 127,  // 地面绘制到 canvas 时的 y 坐标
+    YPOS: 127,  // 绘制到 canvas 中的 y 坐标
   };
 
   HorizonLine.prototype = {
@@ -591,10 +539,10 @@
       );
     },
     /**
-    * 更新地面
-    * @param {Number} deltaTime 间隔时间
-    * @param {Number} speed 速度
-    */
+     * 更新地面
+     * @param {Number} deltaTime 间隔时间
+     * @param {Number} speed 速度
+     */
     update: function (deltaTime, speed) {
       // 计算地面每次移动的距离（距离 = 速度 x 时间）时间由帧率和间隔时间共同决定
       var incre = Math.floor(speed * (FPS / 1000) * deltaTime);
@@ -645,7 +593,7 @@
    */
   function Cloud(canvas, spritePos, containerWidth) {
     this.canvas = canvas;
-    this.ctx = this.canvas.getContext('2d');
+    this.ctx = canvas.getContext('2d');
     this.spritePos = spritePos;
     this.containerWidth = containerWidth;
 
@@ -682,12 +630,12 @@
     },
     draw: function () {
       this.ctx.save();
-
+  
       var sourceWidth = Cloud.config.WIDTH;
       var sourceHeight = Cloud.config.HEIGHT;
       var outputWidth = sourceWidth;
       var outputHeight = sourceHeight;
-
+  
       this.ctx.drawImage(
         Runner.imageSprite,
         this.spritePos.x, this.spritePos.y,
@@ -702,7 +650,7 @@
       if (!this.remove) {
         this.xPos -= speed;
         this.draw();
-
+  
         // 云朵移出 canvas，将其删除
         if (!this.isVisible()) {
           this.remove = true;
@@ -716,356 +664,6 @@
   };
 
   /**
-   * 记录移动的距离（分数等于移动距离）
-   * @param {HTMLCanvasElement} canvas 画布
-   * @param {Object} spritePos 图片在雪碧图中的位置
-   * @param {Number} canvasWidth 画布的宽度
-   */
-  function DistanceMeter(canvas, spritePos, canvasWidth) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-
-    this.config = DistanceMeter.config;
-    this.spritePos = spritePos;
-
-    this.x = 0;               // 分数显示在 canvas 中的 x 坐标
-    this.y = 5;
-
-    this.maxScore = 0;        // 游戏分数上限
-    this.highScore = [];      // 存储最高分数的每一位数字
-
-    this.digits = [];         // 存储分数的每一位数字
-    this.achievement = false; // 是否进行闪动特效
-    this.defaultString = '';  // 游戏的默认距离（00000）
-    this.flashTimer = 0;      // 动画计时器
-    this.flashIterations = 0; // 特效闪动的次数
-
-    this.maxScoreUnits = this.config.MAX_DISTANCE_UNITS; // 分数的最大位数
-
-    this.init(canvasWidth);
-  }
-
-  DistanceMeter.config = {
-    MAX_DISTANCE_UNITS: 5,          // 分数的最大位数
-    ACHIEVEMENT_DISTANCE: 100,      // 每 100 米触发一次闪动特效
-    COEFFICIENT: 0.025,             // 将像素距离转换为比例单位的系数
-    FLASH_DURATION: 1000 / 4,       // 一闪的时间（一次闪动分别两闪：从有到无，从无到有）
-    FLASH_ITERATIONS: 3,            // 闪动的次数
-  };
-
-  DistanceMeter.dimensions = {
-    WIDTH: 10,
-    HEIGHT: 13,
-    DEST_WIDTH: 11, // 加上间隔后每个数字的宽度
-  };
-
-  DistanceMeter.prototype = {
-    init: function (width) {
-      var maxDistanceStr = '';     // 游戏的最大距离
-
-      this.calcXPos(width);        // 计算分数显示在 canvas 中的 x 坐标
-
-      for (var i = 0; i < this.maxScoreUnits; i++) {
-        this.draw(i, 0);           // 第一次游戏，不绘制最高分
-        this.defaultString += '0'; // 默认初始分数 00000
-        maxDistanceStr += '9';     // 默认最大分数 99999
-      }
-      
-      this.maxScore = parseInt(maxDistanceStr);
-    },
-    calcXPos: function (canvasWidth) {
-      this.x = canvasWidth - (DistanceMeter.dimensions.DEST_WIDTH *
-        (this.maxScoreUnits + 1));
-    },
-    /**
-     * 将分数绘制到 canvas 上
-     * @param {Number} digitPos 数字在分数中的位置
-     * @param {Number} value 数字的具体值（0-9）
-     * @param {Boolean} optHighScore 是否显示最高分
-     */
-    draw: function (digitPos, value, optHighScore) {
-      // 在雪碧图中的坐标
-      var sourceX = this.spritePos.x + DistanceMeter.dimensions.WIDTH * value;
-      var sourceY = this.spritePos.y + 0;
-      var sourceWidth = DistanceMeter.dimensions.WIDTH;
-      var sourceHeight = DistanceMeter.dimensions.HEIGHT;
-
-      // 绘制到 canvas 时的坐标
-      var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH;
-      var targetY = this.y;
-      var targetWidth = DistanceMeter.dimensions.WIDTH;
-      var targetHeight = DistanceMeter.dimensions.HEIGHT;
-
-      this.ctx.save();
-
-      if (optHighScore) { // 显示最高分
-        var hightScoreX = this.x - (this.maxScoreUnits * 2) *
-          DistanceMeter.dimensions.WIDTH;
-
-        this.ctx.translate(hightScoreX, this.y);
-      } else {            // 不显示最高分
-        this.ctx.translate(this.x, this.y);
-      }
-
-      this.ctx.drawImage(
-        Runner.imageSprite,
-        sourceX, sourceY,
-        sourceWidth, sourceHeight,
-        targetX, targetY,
-        targetWidth, targetHeight
-      );
-
-      this.ctx.restore();
-    },
-    /**
-     * 将游戏移动的像素距离转换为真实的距离
-     * @param {Number} distance 游戏移动的像素距离
-     */
-    getActualDistance: function (distance) {
-      return distance ? Math.round(distance * this.config.COEFFICIENT) : 0;
-    },
-    update: function (deltaTime, distance) {
-      var paint = true;      // 是否绘制分数
-      var playSound = false; // 是否播放音效
-
-      // 没有进行闪动特效
-      if (!this.achievement) {
-        distance = this.getActualDistance(distance);
-
-        // 分数超出上限时，上限增加一位数。超出上限两位数时，分数置零
-        if (distance > this.maxScore &&
-          this.maxScoreUnits === this.config.MAX_DISTANCE_UNITS) {
-          this.maxScoreUnits++;
-          this.maxScore = parseInt(this.maxScore + '9');
-        } else {
-          this.distance = 0;
-        }
-
-        if (distance > 0) {
-          // 触发闪动特效
-          if (distance % this.config.ACHIEVEMENT_DISTANCE == 0) {
-            this.achievement = true;
-            this.flashTimer = 0;
-            playSound = true;
-          }
-
-          // 分数前面补零来凑位数
-          var distanceStr = (this.defaultString + distance).substr(-this.maxScoreUnits);
-          this.digits = distanceStr.split('');
-        } else {
-          // 将默认分数 00000 中的每一位数字存到数组中
-          this.digits = this.defaultString.split('');
-        }
-      } else {
-        // 控制特效的闪动次数
-        if (this.flashIterations <= this.config.FLASH_ITERATIONS) {
-          this.flashTimer += deltaTime;
-
-          // 第一闪不绘制数字
-          if (this.flashTimer < this.config.FLASH_DURATION) {
-            paint = false;
-          }
-          // 进行了两闪，闪动次数加一
-          else if (this.flashTimer > this.config.FLASH_DURATION * 2) {
-            this.flashTimer = 0;
-            this.flashIterations++;
-          }
-        } else { // 闪动特效结束
-          this.achievement = false;
-          this.flashIterations = 0;
-          this.flashTimer = 0;
-        }
-      }
-
-      // 绘制当前分
-      if (paint) {
-        for (var i = this.digits.length - 1; i >= 0; i--) {
-          this.draw(i, parseInt(this.digits[i]));
-        }
-      }
-
-      // 绘制最高分
-      this.drawHighScore();
-      return playSound;
-    },
-    drawHighScore: function () {
-      this.ctx.save();
-      this.ctx.globalAlpha = 0.8;
-
-      for (var i = this.highScore.length - 1; i >= 0; i--) {
-        this.draw(i, parseInt(this.highScore[i], 10), true);
-      }
-      this.ctx.restore();
-    },
-    /**
-     * 将游戏的最高分数存入数组
-     * @param {Number} distance 游戏移动的像素距离
-     */
-    setHighScore: function (distance) {
-      distance = this.getActualDistance(distance);
-      var highScoreStr = (this.defaultString
-        + distance).substr(-this.maxScoreUnits);
-      
-      // 分数前面字母 H、I 在雪碧图中位于数字后面，也就是第 10、11 位置
-      this.highScore = ['10', '11', ''].concat(highScoreStr.split(''));
-    },
-  };
-
-  /**
-   * 夜晚模式
-   * @param {HTMLCanvasElement} canvas 画布
-   * @param {Object} spritePos 雪碧图中的坐标信息
-   * @param {Number} containerWidth 容器宽度
-   */
-  function NightMode(canvas, spritePos, containerWidth) {
-    this.canvas = canvas;
-    this.ctx = this.canvas.getContext('2d');
-
-    this.spritePos = spritePos;
-    this.containerWidth = containerWidth;
-
-    this.xPos = containerWidth - 50; // 月亮的 x 坐标
-    this.yPos = 30;                  // 月亮的 y 坐标
-    this.currentPhase = 0;           // 月亮当前所处的时期
-    this.opacity = 0;                // 星星和月亮的透明度
-    this.stars = [];                 // 存储星星
-    this.drawStars = false;          // 是否绘制星星
-    
-    // 放置星星
-    this.placeStars();
-  }
-
-  NightMode.config = {
-    WIDTH: 20,         // 半月的宽度
-    HEIGHT: 40,        // 月亮的高度
-    FADE_SPEED: 0.035, // 淡入淡出的速度
-    MOON_SPEED: 0.25,  // 月亮的速度
-    NUM_STARS: 2,      // 星星的数量
-    STAR_SIZE: 9,      // 星星的大小
-    STAR_SPEED: 0.3,   // 星星的速度
-    STAR_MAX_Y: 70,    // 星星在画布上的最大 y 坐标
-  };
-
-  // 月亮所处的时期（不同的时期有不同的位置）
-  NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
-
-  NightMode.prototype = {
-    draw: function () {
-      // 月期为 3 时，月亮为满月
-      var moonSourceWidth = this.currentPhase == 3 ? NightMode.config.WIDTH * 2 :
-         NightMode.config.WIDTH;
-      var moonSourceHeight = NightMode.config.HEIGHT;
-
-      // 月亮在雪碧图中的 x 坐标
-      var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
-      var moonOutputWidth = moonSourceWidth;
-
-      // 星星在雪碧图中的 x 坐标
-      var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
-      var starSize = NightMode.config.STAR_SIZE;
-
-      this.ctx.save();
-      this.ctx.globalAlpha = this.opacity; // 画布的透明度随之变化
-
-      // 绘制星星
-      if (this.drawStars) {
-        for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-          this.ctx.drawImage(
-            Runner.imageSprite,
-            starSourceX, this.stars[i].sourceY,
-            starSize, starSize,
-            Math.round(this.stars[i].x), this.stars[i].y,
-            NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE,
-          );
-        }
-      }
-
-      // 绘制月亮
-      this.ctx.drawImage(
-        Runner.imageSprite,
-        moonSourceX, this.spritePos.y,
-        moonSourceWidth, moonSourceHeight,
-        Math.round(this.xPos), this.yPos,
-        moonOutputWidth, NightMode.config.HEIGHT
-      );
-      
-      this.ctx.globalAlpha = 1;
-      this.ctx.restore();
-    },
-    /**
-     * 更新月亮位置，改变月期
-     * @param {Boolean} activated 是否夜晚模式被激活
-     */
-    update: function (activated) {
-      // 改变月期
-      if (activated && this.opacity === 0) {
-        this.currentPhase++;
-
-        if (this.currentPhase >= NightMode.phases.length) {
-          this.currentPhase = 0;
-        }
-      }
-
-      // 淡入
-      if (activated && (this.opacity < 1 || this.opacity === 0)) {
-        this.opacity += NightMode.config.FADE_SPEED;
-      } else if (this.opacity > 0) { // 淡出
-        this.opacity -= NightMode.config.FADE_SPEED;
-      }
-
-      // 设置月亮和星星的位置
-      if (this.opacity > 0) {
-        // 更新月亮的 x 坐标
-        this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
-
-        // 更新星星的 x 坐标
-        if (this.drawStars) {
-          for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-            this.stars[i].x = this.updateXPos(this.stars[i].x, 
-              NightMode.config.STAR_SPEED);
-          }
-        }
-
-        this.draw();
-      } else {
-        this.opacity = 0;
-        this.placeStars();
-      }
-
-      this.drawStars = true;
-    },
-    // 更新 x 坐标
-    updateXPos: function (currentPos, speed) {
-      // 月亮移出画布半个月亮宽度，将其位置移动到画布右边
-      if (currentPos < -NightMode.config.WIDTH) {
-        currentPos = this.containerWidth;
-      } else {
-        currentPos -= speed;
-      }
-
-      return currentPos;
-    },
-    // 随机放置星星
-    placeStars: function () {
-      // 将画布分为若干组
-      var segmentSize = Math.round(this.containerWidth /
-        NightMode.config.NUM_STARS);
-
-      for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
-        this.stars[i] = {};
-
-        // 分别随机每组画布中星星的位置
-        this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
-        this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
-
-        // 星星在雪碧图中的 y 坐标
-        this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
-            NightMode.config.STAR_SIZE * i;
-      }
-    },
-  };
-
-  /**
    * 障碍物类
    * @param {HTMLCanvasElement} canvas 画布
    * @param {String} type 障碍物类型
@@ -1073,39 +671,38 @@
    * @param {Object} dimensions 画布尺寸
    * @param {Number} gapCoefficient 间隙系数
    * @param {Number} speed 速度
-   * @param {Number} optXOffset x 坐标修正
+   * @param {Number} opt_xOffset x 坐标修正
    */
   function Obstacle(canvas, type, spriteImgPos, dimensions,
-    gapCoefficient, speed, optXOffset) {
+    gapCoefficient, speed, opt_xOffset) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-
+  
     this.typeConfig = type;               // 障碍物类型
     this.spritePos = spriteImgPos;        // 在雪碧图中的位置
     this.gapCoefficient = gapCoefficient; // 间隔系数
     this.dimensions = dimensions;
-
+  
     // 每组障碍物的数量（随机 1~3 个）
     this.size = getRandomNum(1, Obstacle.MAX_OBSTACLE_LENGTH);
-
-    this.xPos = dimensions.WIDTH + (optXOffset || 0);
+  
+    this.xPos = dimensions.WIDTH + (opt_xOffset || 0);
     this.yPos = 0;
-
+  
     this.remove = false;   // 是否可以被删除
     this.gap = 0;          // 间隙
     this.speedOffset = 0;  // 速度修正
-
+  
     // 非静态障碍物的属性
     this.currentFrame = 0; // 当前动画帧
     this.timer = 0;        // 动画帧切换计时器
-
+  
     this.init(speed);
   }
 
-  Obstacle.MAX_GAP_COEFFICIENT = 1.5;     // 最大间隙系数
-  Obstacle.MAX_OBSTACLE_LENGTH = 3;       // 每组障碍物的最大数量
+  Obstacle.MAX_GAP_COEFFICIENT = 1.5; // 最大间隙系数
+  Obstacle.MAX_OBSTACLE_LENGTH = 3;   // 每组障碍物的最大数量
 
-  // 定义障碍物的数据参数
   Obstacle.types = [{
     type: 'CACTUS_SMALL',  // 小仙人掌
     width: 17,
@@ -1142,9 +739,9 @@
       if (this.size > 1 && this.typeConfig.multipleSpeed > speed) {
         this.size = 1;
       }
-
+  
       this.width = this.typeConfig.width * this.size;
-
+  
       // 检查障碍物是否可以被放置在不同的高度
       if (Array.isArray(this.typeConfig.yPos)) {
         var yPosConfig = this.typeConfig.yPos;
@@ -1153,7 +750,7 @@
       } else {
         this.yPos = this.typeConfig.yPos;
       }
-
+  
       this.draw();
       
       // 对于速度与地面不同的障碍物（翼龙）进行速度修正
@@ -1162,15 +759,15 @@
         this.speedOffset = Math.random() > 0.5 ? this.typeConfig.speedOffset :
           -this.typeConfig.speedOffset;
       }
-
+  
       // 障碍物的间隙随游戏速度变化而改变
       this.gap = this.getGap(this.gapCoefficient, speed);
     },
     /**
-     * 获取障碍物的间隙
-     * @param {Number} gapCoefficient 间隙系数
-     * @param {Number} speed 速度
-     */
+      * 获取障碍物的间隙
+      * @param {Number} gapCoefficient 间隙系数
+      * @param {Number} speed 速度
+      */
     getGap: function(gapCoefficient, speed) {
       var minGap = Math.round(this.width * speed +
             this.typeConfig.minGap * gapCoefficient);
@@ -1180,7 +777,7 @@
     draw: function () {
       var sourceWidth = this.typeConfig.width;
       var sourceHeight = this.typeConfig.height;
-
+  
       // 根据每组障碍物的数量计算障碍物在雪碧图上的坐标
       var sourceX = (sourceWidth * this.size) * (0.5 * (this.size - 1)) +
         this.spritePos.x;
@@ -1189,7 +786,7 @@
       if (this.currentFrame > 0) {
         sourceX += sourceWidth * this.currentFrame;
       }
-
+  
       this.ctx.drawImage(
         Runner.imageSprite,
         sourceX, this.spritePos.y,
@@ -1206,11 +803,11 @@
         }
         
         this.xPos -= Math.floor((speed * FPS / 1000) * Math.round(deltaTime));
-
+  
         // 如果有动画帧，则更新
         if (this.typeConfig.numFrames) {
           this.timer += deltaTime;
-
+  
           if (this.timer >= this.typeConfig.frameRate) {
             // 第一帧 currentFrame 为 0，第二帧 currentFrame 为 1
             this.currentFrame =
@@ -1220,7 +817,7 @@
           }
         }
         this.draw();
-
+  
         // 标记移出画布的障碍物
         if (!this.isVisible()) {
           this.remove = true;
@@ -1263,6 +860,7 @@
     this.reachedMinHeight = false;     // 是否达到最低高度
     this.speedDrop = false;            // 是否加速下降
     this.jumpCount = 0;                // 跳跃的次数
+    this.jumpspotX = 0;                // 跳跃点的 x 坐标
 
     this.init();
   }
@@ -1275,15 +873,16 @@
     HEIGHT_DUCK: 25,
     MAX_JUMP_HEIGHT: 30,        // 最大跳跃高度
     MIN_JUMP_HEIGHT: 30,        // 最小跳跃高度
+    SPRITE_WIDTH: 262,          // 站立的小恐龙在雪碧图中的总宽度
     DROP_VELOCITY: -5,          // 下落的速度
     INITIAL_JUMP_VELOCITY: -10, // 初始跳跃速度
     SPEED_DROP_COEFFICIENT: 3,  // 下落时的加速系数（越大下落的越快）
     INTRO_DURATION: 1500,       // 开场动画的时间
     START_X_POS: 50,            // 开场动画结束后，小恐龙在 canvas 上的 x 坐标
   };
-
+  
   Trex.BLINK_TIMING = 7000;     // 眨眼最大间隔的时间
-
+  
   // 小恐龙的状态
   Trex.status = {
     CRASHED: 'CRASHED', // 撞到障碍物
@@ -1292,7 +891,7 @@
     RUNNING: 'RUNNING', // 正在奔跑
     WAITING: 'WAITING', // 正在等待（未开始游戏）
   };
-
+  
   // 为不同的状态配置不同的动画帧
   Trex.animFrames = {
     WAITING: {
@@ -1322,9 +921,11 @@
       // 获取小恐龙站在地面上时的 y 坐标
       this.groundYPos = Runner.defaultDimensions.HEIGHT - this.config.HEIGHT -
           Runner.config.BOTTOM_PAD;
-      this.yPos = this.groundYPos;         // 小恐龙的 y 坐标初始化
+      this.yPos = this.groundYPos; // 小恐龙的 y 坐标初始化
+      // 最低跳跃高度
+      this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT;
   
-      this.draw(0, 0);                     // 绘制小恐龙的第一帧图片
+      this.draw(0, 0);             // 绘制小恐龙的第一帧图片
       this.update(0, Trex.status.WAITING); // 初始为等待状态
     },
     /**
@@ -1336,12 +937,12 @@
       // 在雪碧图中的坐标
       var sourceX = x + this.spritePos.x;
       var sourceY = y + this.spritePos.y;
-
+  
       // 在雪碧图中的宽高
       var sourceWidth = this.ducking && this.status != Trex.status.CRASHED ?
           this.config.WIDTH_DUCK : this.config.WIDTH;
       var sourceHeight = this.config.HEIGHT;
-
+  
       // 绘制到 canvas 上时的高度
       var outputHeight = sourceHeight;
   
@@ -1368,35 +969,35 @@
           this.config.WIDTH, outputHeight
         );
       }
-
+  
       this.ctx.globalAlpha = 1;
     },
     /**
      * 更新小恐龙
      * @param {Number} deltaTime 间隔时间
-     * @param {String} optStatus 小恐龙的状态
+     * @param {String} opt_status 小恐龙的状态
      */
-    update: function(deltaTime, optStatus) {
+    update: function(deltaTime, opt_status) {
       this.timer += deltaTime;
 
       // 更新状态的参数
-      if (optStatus) {
-        this.status = optStatus;
+      if (opt_status) {
+        this.status = opt_status;
         this.currentFrame = 0;
-        this.msPerFrame = Trex.animFrames[optStatus].msPerFrame;
-        this.currentAnimFrames = Trex.animFrames[optStatus].frames;
+        this.msPerFrame = Trex.animFrames[opt_status].msPerFrame;
+        this.currentAnimFrames = Trex.animFrames[opt_status].frames;
 
-        if (optStatus == Trex.status.WAITING) {
+        if (opt_status == Trex.status.WAITING) {
           this.animStartTime = getTimeStamp(); // 设置眨眼动画开始的时间
           this.setBlinkDelay();                // 设置眨眼间隔的时间
         }
       }
 
-      // // 正在执行开场动画，将小恐龙向右移动 50 像素
-      // if (this.playingIntro && this.xPos < this.config.START_X_POS) {
-      //   this.xPos += Math.round((this.config.START_X_POS /
-      //     this.config.INTRO_DURATION) * deltaTime);
-      // }
+      // 正在执行开场动画，将小恐龙向右移动 50 像素
+      if (this.playingIntro && this.xPos < this.config.START_X_POS) {
+        this.xPos += Math.round((this.config.START_X_POS /
+          this.config.INTRO_DURATION) * deltaTime);
+      }
 
       if (this.status == Trex.status.WAITING) {
         // 小恐龙眨眼
@@ -1407,18 +1008,12 @@
       }
 
       if (this.timer >= this.msPerFrame) {
-        // 更新当前动画帧
+        // 更新当前动画帧，如果处于最后一帧就更新为第一帧，否则更新为下一帧
         this.currentFrame = this.currentFrame ==
           this.currentAnimFrames.length - 1 ? 0 : this.currentFrame + 1;
         // 重置计时器
         this.timer = 0;
       }
-
-      // // 加速下落到地面后，如果仍按着下键时
-      // if (this.speedDrop && this.yPos == this.groundYPos) {
-      //   this.speedDrop = false;
-      //   this.setDuck(true);
-      // }
     },
     // 设置眨眼间隔的时间
     setBlinkDelay: function() {
@@ -1434,89 +1029,439 @@
         
         // 正在眨眼
         if (this.currentFrame == 1) {
-          log('眨眼');
+          console.log('眨眼');
           this.setBlinkDelay();      // 重新设置眨眼间隔的时间
           this.animStartTime = time; // 更新眨眼动画开始的时间
           this.blinkCount++;         // 眨眼次数加一
         }
       }
     },
-    // // 设置小恐龙躲闪时的状态
-    // setDuck: function(isDucking) {
-    //   if (isDucking && this.status != Trex.status.DUCKING) { // 躲闪状态
-    //     this.update(0, Trex.status.DUCKING);
-    //     this.ducking = true;
-    //   } else if (this.status == Trex.status.DUCKING) { // 奔跑状态
-    //     this.update(0, Trex.status.RUNNING);
-    //     this.ducking = false;
-    //   }
-    // },
-    // // 更新小恐龙跳跃时的动画
-    // updateJump: function(deltaTime) {
-    //   var msPerFrame = Trex.animFrames[this.status].msPerFrame; // 获取当前状态的帧率
-    //   var framesElapsed = deltaTime / msPerFrame;
-  
-    //   // 加速下落
-    //   if (this.speedDrop) {
-    //     this.yPos += Math.round(this.jumpVelocity *
-    //       this.config.SPEED_DROP_COEFFICIENT * framesElapsed);
-    //   } else {
-    //     this.yPos += Math.round(this.jumpVelocity * framesElapsed);
-    //   }
-  
-    //   // 跳跃的速度受重力的影响，向上逐渐减小，然后反向
-    //   this.jumpVelocity += this.config.GRAVITY * framesElapsed;
-  
-    //   // 达到了最低允许的跳跃高度
-    //   if (this.yPos < this.minJumpHeight || this.speedDrop) {
-    //     this.reachedMinHeight = true;
-    //   }
-  
-    //   // 达到了最高允许的跳跃高度
-    //   if (this.yPos < this.config.MAX_JUMP_HEIGHT || this.speedDrop) {
-    //     this.endJump(); // 结束跳跃
-    //   }
-  
-    //   // 重新回到地面，跳跃完成
-    //   if (this.yPos > this.groundYPos) {
-    //     this.reset();     // 重置小恐龙的状态
-    //     this.jumpCount++; // 跳跃次数加一
-    //   }
-    // },
-    // // 重置小恐龙状态
-    // reset: function() {
-    //   this.yPos = this.groundYPos;
-    //   this.jumpVelocity = 0;
-    //   this.jumping = false;
-    //   this.ducking = false;
-    //   this.update(0, Trex.status.RUNNING);
-    //   this.speedDrop = false;
-    //   this.jumpCount = 0;
-    // },
-    // // 跳跃开始
-    // startJump: function(speed) {
-    //   if (!this.jumping) {
-    //     this.update(0, Trex.status.JUMPING);
+    // 开始跳跃
+    startJump: function(speed) {
+      if (!this.jumping) {
+        // 更新小恐龙为跳跃状态 
+        this.update(0, Trex.status.JUMPING);
         
-    //     // 根据游戏的速度调整跳跃的速度
-    //     this.jumpVelocity = this.config.INITIAL_JUMP_VELOCITY - (speed / 10);
-    //     this.jumping = true;
-    //     this.reachedMinHeight = false;
-    //     this.speedDrop = false;
-    //   }
-    // },
-    // // 跳跃结束
-    // endJump: function() {
-    //   if (this.reachedMinHeight &&
-    //       this.jumpVelocity < this.config.DROP_VELOCITY) {
-    //     this.jumpVelocity = this.config.DROP_VELOCITY; // 下落速度重置为默认
-    //   }
-    // },
-    // // 设置小恐龙为加速下落，立即取消当前的跳跃
-    // setSpeedDrop: function() {
-    //   this.speedDrop = true;
-    //   this.jumpVelocity = 1;
-    // },
+        // 根据游戏的速度调整跳跃的速度
+        this.jumpVelocity = this.config.INITIAL_JUMP_VELOCITY - (speed / 10);
+        
+        this.jumping = true;
+        this.reachedMinHeight = false;
+        this.speedDrop = false;
+      }
+    },
+    // 更新小恐龙跳跃时的动画帧
+    updateJump: function(deltaTime) {
+      var msPerFrame = Trex.animFrames[this.status].msPerFrame; // 获取当前状态的帧率
+      var framesElapsed = deltaTime / msPerFrame;
+
+      // 加速下落
+      if (this.speedDrop) {
+        this.yPos += Math.round(this.jumpVelocity *
+          this.config.SPEED_DROP_COEFFICIENT * framesElapsed);
+      } else {
+        this.yPos += Math.round(this.jumpVelocity * framesElapsed);
+      }
+
+      // 跳跃的速度受重力的影响，向上逐渐减小，然后反向
+      this.jumpVelocity += this.config.GRAVITY * framesElapsed;
+
+      // 达到了最低允许的跳跃高度
+      if (this.yPos < this.minJumpHeight || this.speedDrop) {
+        this.reachedMinHeight = true;
+      }
+
+      // 达到了最高允许的跳跃高度
+      if (this.yPos < this.config.MAX_JUMP_HEIGHT || this.speedDrop) {
+        this.endJump(); // 结束跳跃
+      }
+
+      // 重新回到地面，跳跃完成
+      if (this.yPos > this.groundYPos) {
+        this.reset();     // 重置小恐龙的状态
+        this.jumpCount++; // 跳跃次数加一
+      }
+    },
+    // 跳跃结束
+    endJump: function() {
+      if (this.reachedMinHeight &&
+          this.jumpVelocity < this.config.DROP_VELOCITY) {
+        this.jumpVelocity = this.config.DROP_VELOCITY; // 下落速度重置为默认
+      }
+    },
+    // 重置小恐龙状态
+    reset: function() {
+      this.yPos = this.groundYPos;
+      this.jumpVelocity = 0;
+      this.jumping = false;
+      this.ducking = false;
+      this.update(0, Trex.status.RUNNING);
+      this.speedDrop = false;
+      this.jumpCount = 0;
+    },
+    // 设置小恐龙为加速下落，立即取消当前的跳跃
+    setSpeedDrop: function() {
+      this.speedDrop = true;
+      this.jumpVelocity = 1;
+    },
+    // 设置小恐龙奔跑时是否躲闪
+    setDuck: function(isDucking) {
+      if (isDucking && this.status != Trex.status.DUCKING) { // 躲闪状态
+        this.update(0, Trex.status.DUCKING);
+        this.ducking = true;
+      } else if (this.status == Trex.status.DUCKING) {       // 奔跑状态
+        this.update(0, Trex.status.RUNNING);
+        this.ducking = false;
+      }
+    },
+  };
+
+  /**
+   * 记录移动的距离（分数等于移动距离）
+   * @param {HTMLCanvasElement} canvas 画布
+   * @param {Object} spritePos 图片在雪碧图中的位置
+   * @param {Number} canvasWidth 画布的宽度
+   */
+  function DistanceMeter(canvas, spritePos, canvasWidth) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+  
+    this.config = DistanceMeter.config;
+    this.spritePos = spritePos;
+  
+    this.x = 0;               // 分数显示在 canvas 中的 x 坐标
+    this.y = 5;
+  
+    this.maxScore = 0;        // 游戏分数上限
+    this.highScore = [];      // 存储最高分数的每一位数字
+  
+    this.digits = [];         // 存储分数的每一位数字
+    this.achievement = false; // 是否进行闪动特效
+    this.defaultString = '';  // 游戏的默认距离（00000）
+    this.flashTimer = 0;      // 动画计时器
+    this.flashIterations = 0; // 特效闪动的次数
+  
+    this.maxScoreUnits = this.config.MAX_DISTANCE_UNITS; // 分数的最大位数
+  
+    this.init(canvasWidth);
+  }
+
+  DistanceMeter.config = {
+    MAX_DISTANCE_UNITS: 5,          // 分数的最大位数
+    ACHIEVEMENT_DISTANCE: 100,      // 每 100 米触发一次闪动特效
+    COEFFICIENT: 0.025,             // 将像素距离转换为比例单位的系数
+    FLASH_DURATION: 1000 / 4,       // 一闪的时间（一次闪动分别两闪：从有到无，从无到有）
+    FLASH_ITERATIONS: 3,            // 闪动的次数
+  };
+  
+  DistanceMeter.dimensions = {
+    WIDTH: 10,
+    HEIGHT: 13,
+    DEST_WIDTH: 11, // 加上间隔后每个数字的宽度
+  };
+
+  DistanceMeter.prototype = {
+    init: function (width) {
+      var maxDistanceStr = '';     // 游戏的最大距离
+  
+      this.calcXPos(width);        // 计算分数显示在 canvas 中的 x 坐标
+  
+      for (var i = 0; i < this.maxScoreUnits; i++) {
+        this.draw(i, 0);           // 第一次游戏，不绘制最高分
+        this.defaultString += '0'; // 默认初始分数 00000
+        maxDistanceStr += '9';     // 默认最大分数 99999
+      }
+      
+      this.maxScore = parseInt(maxDistanceStr);
+    },
+    calcXPos: function (canvasWidth) {
+      this.x = canvasWidth - (DistanceMeter.dimensions.DEST_WIDTH *
+        (this.maxScoreUnits + 1));
+    },
+    /**
+      * 将分数绘制到 canvas 上
+      * @param {Number} digitPos 数字在分数中的位置
+      * @param {Number} value 数字的具体值（0-9）
+      * @param {Boolean} opt_highScore 是否显示最高分
+      */
+    draw: function (digitPos, value, opt_highScore) {
+      // 在雪碧图中的坐标
+      var sourceX = this.spritePos.x + DistanceMeter.dimensions.WIDTH * value;
+      var sourceY = this.spritePos.y + 0;
+      var sourceWidth = DistanceMeter.dimensions.WIDTH;
+      var sourceHeight = DistanceMeter.dimensions.HEIGHT;
+  
+      // 绘制到 canvas 时的坐标
+      var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH;
+      var targetY = this.y;
+      var targetWidth = DistanceMeter.dimensions.WIDTH;
+      var targetHeight = DistanceMeter.dimensions.HEIGHT;
+  
+      this.ctx.save();
+  
+      if (opt_highScore) { // 显示最高分
+        var hightScoreX = this.x - (this.maxScoreUnits * 2) *
+          DistanceMeter.dimensions.WIDTH;
+  
+        this.ctx.translate(hightScoreX, this.y);
+      } else {            // 不显示最高分
+        this.ctx.translate(this.x, this.y);
+      }
+  
+      this.ctx.drawImage(
+        Runner.imageSprite,
+        sourceX, sourceY,
+        sourceWidth, sourceHeight,
+        targetX, targetY,
+        targetWidth, targetHeight
+      );
+  
+      this.ctx.restore();
+    },
+    /**
+      * 将游戏移动的像素距离转换为真实的距离
+      * @param {Number} distance 游戏移动的像素距离
+      */
+    getActualDistance: function (distance) {
+      return distance ? Math.round(distance * this.config.COEFFICIENT) : 0;
+    },
+    update: function (deltaTime, distance) {
+      var paint = true;      // 是否绘制分数
+      var playSound = false; // 是否播放音效
+  
+      // 没有进行闪动特效
+      if (!this.achievement) {
+        distance = this.getActualDistance(distance);
+  
+        // 分数超出上限时，上限增加一位数。超出上限两位数时，分数置零
+        if (distance > this.maxScore &&
+          this.maxScoreUnits === this.config.MAX_DISTANCE_UNITS) {
+          this.maxScoreUnits++;
+          this.maxScore = parseInt(this.maxScore + '9');
+        } else {
+          this.distance = 0;
+        }
+  
+        if (distance > 0) {
+          // 触发闪动特效
+          if (distance % this.config.ACHIEVEMENT_DISTANCE == 0) {
+            this.achievement = true;
+            this.flashTimer = 0;
+            playSound = true;
+          }
+  
+          // 分数前面补零来凑位数
+          var distanceStr = (this.defaultString + distance).substr(-this.maxScoreUnits);
+          this.digits = distanceStr.split('');
+        } else {
+          // 将默认分数 00000 中的每一位数字存到数组中
+          this.digits = this.defaultString.split('');
+        }
+      } else {
+        // 控制特效的闪动次数
+        if (this.flashIterations <= this.config.FLASH_ITERATIONS) {
+          this.flashTimer += deltaTime;
+  
+          // 第一闪不绘制数字
+          if (this.flashTimer < this.config.FLASH_DURATION) {
+            paint = false;
+          }
+          // 进行了两闪，闪动次数加一
+          else if (this.flashTimer > this.config.FLASH_DURATION * 2) {
+            this.flashTimer = 0;
+            this.flashIterations++;
+          }
+        } else { // 闪动特效结束
+          this.achievement = false;
+          this.flashIterations = 0;
+          this.flashTimer = 0;
+        }
+      }
+  
+      // 绘制当前分
+      if (paint) {
+        for (var i = this.digits.length - 1; i >= 0; i--) {
+          this.draw(i, parseInt(this.digits[i]));
+        }
+      }
+  
+      // 绘制最高分
+      this.drawHighScore();
+      return playSound;
+    },
+    drawHighScore: function () {
+      this.ctx.save();
+      this.ctx.globalAlpha = 0.8;
+  
+      for (var i = this.highScore.length - 1; i >= 0; i--) {
+        this.draw(i, parseInt(this.highScore[i], 10), true);
+      }
+      this.ctx.restore();
+    },
+    /**
+      * 将游戏的最高分数存入数组
+      * @param {Number} distance 游戏移动的像素距离
+      */
+    setHighScore: function (distance) {
+      distance = this.getActualDistance(distance);
+      var highScoreStr = (this.defaultString
+        + distance).substr(-this.maxScoreUnits);
+      
+      // 分数前面字母 H、I 在雪碧图中位于数字后面，也就是第 10、11 位置
+      this.highScore = ['10', '11', ''].concat(highScoreStr.split(''));
+    },
+  };
+
+  /**
+   * 夜晚模式
+   * @param {HTMLCanvasElement} canvas 画布
+   * @param {Object} spritePos 雪碧图中的坐标信息
+   * @param {Number} containerWidth 容器宽度
+   */
+  function NightMode(canvas, spritePos, containerWidth) {
+    this.canvas = canvas;
+    this.ctx = this.canvas.getContext('2d');
+  
+    this.spritePos = spritePos;
+    this.containerWidth = containerWidth;
+  
+    this.xPos = containerWidth - 50; // 月亮的 x 坐标
+    this.yPos = 30;                  // 月亮的 y 坐标
+    this.currentPhase = 0;           // 月亮当前所处的时期
+    this.opacity = 0;
+    this.stars = [];                 // 存储星星
+    this.drawStars = false;          // 是否绘制星星
+    
+    // 放置星星
+    this.placeStars();
+  }
+
+  NightMode.config = {
+    WIDTH: 20,         // 半月的宽度
+    HEIGHT: 40,        // 月亮的高度
+    FADE_SPEED: 0.035, // 淡入淡出的速度
+    MOON_SPEED: 0.25,  // 月亮的速度
+    NUM_STARS: 2,      // 星星的数量
+    STAR_SIZE: 9,      // 星星的大小
+    STAR_SPEED: 0.3,   // 星星的速度
+    STAR_MAX_Y: 70,    // 星星在画布上的最大 y 坐标
+  };
+  
+  // 月亮所处的时期（不同的时期有不同的位置）
+  NightMode.phases = [140, 120, 100, 60, 40, 20, 0];
+
+  NightMode.prototype = {
+    draw: function () {
+      // 月期为 3 时，月亮为满月
+      var moonSourceWidth = this.currentPhase == 3 ? NightMode.config.WIDTH * 2 :
+          NightMode.config.WIDTH;
+      var moonSourceHeight = NightMode.config.HEIGHT;
+  
+      // 月亮在雪碧图中的 x 坐标
+      var moonSourceX = this.spritePos.x + NightMode.phases[this.currentPhase];
+      var moonOutputWidth = moonSourceWidth;
+      
+      // 星星在雪碧图中的 x 坐标
+      var starSourceX = Runner.spriteDefinition.LDPI.STAR.x;
+      var starSize = NightMode.config.STAR_SIZE;
+  
+      this.ctx.save();
+      this.ctx.globalAlpha = this.opacity; // 画布的透明度随之变化
+  
+      // 绘制星星
+      if (this.drawStars) {
+        for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+          this.ctx.drawImage(
+            Runner.imageSprite,
+            starSourceX, this.stars[i].sourceY,
+            starSize, starSize,
+            Math.round(this.stars[i].x), this.stars[i].y,
+            NightMode.config.STAR_SIZE, NightMode.config.STAR_SIZE,
+          );
+        }
+      }
+  
+      // 绘制月亮
+      this.ctx.drawImage(
+        Runner.imageSprite,
+        moonSourceX, this.spritePos.y,
+        moonSourceWidth, moonSourceHeight,
+        Math.round(this.xPos), this.yPos,
+        moonOutputWidth, NightMode.config.HEIGHT
+      );
+      
+      this.ctx.globalAlpha = 1;
+      this.ctx.restore();
+    },
+    /**
+      * 更新月亮位置，改变月期
+      * @param {Boolean} activated 是否夜晚模式被激活
+      */
+    update: function (activated) {
+      // 改变月期
+      if (activated && this.opacity === 0) {
+        this.currentPhase++;
+  
+        if (this.currentPhase >= NightMode.phases.length) {
+          this.currentPhase = 0;
+        }
+      }
+  
+      // 淡入
+      if (activated && (this.opacity < 1 || this.opacity === 0)) {
+        this.opacity += NightMode.config.FADE_SPEED;
+      } else if (this.opacity > 0) { // 淡出
+        this.opacity -= NightMode.config.FADE_SPEED;
+      }
+  
+      // 设置月亮和星星的位置
+      if (this.opacity > 0) {
+        // 更新月亮的 x 坐标
+        this.xPos = this.updateXPos(this.xPos, NightMode.config.MOON_SPEED);
+  
+        // 更新星星的 x 坐标
+        if (this.drawStars) {
+          for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+            this.stars[i].x = this.updateXPos(this.stars[i].x, 
+              NightMode.config.STAR_SPEED);
+          }
+        }
+  
+        this.draw();
+      } else {
+        this.opacity = 0;
+        this.placeStars();
+      }
+  
+      this.drawStars = true;
+    },
+    updateXPos: function (currentPos, speed) {
+      // 月亮移出画布半个月亮宽度，将其位置移动到画布右边
+      if (currentPos < -NightMode.config.WIDTH) {
+        currentPos = this.containerWidth;
+      } else {
+        currentPos -= speed;
+      }
+  
+      return currentPos;
+    },
+    placeStars: function () {
+      // 将画布分为若干组
+      var segmentSize = Math.round(this.containerWidth /
+        NightMode.config.NUM_STARS);
+  
+      for (var i = 0; i < NightMode.config.NUM_STARS; i++) {
+        this.stars[i] = {};
+  
+        // 分别随机每组画布中星星的位置
+        this.stars[i].x = getRandomNum(segmentSize * i, segmentSize * (i + 1));
+        this.stars[i].y = getRandomNum(0, NightMode.config.STAR_MAX_Y);
+  
+        // 星星在雪碧图中的 y 坐标
+        this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
+            NightMode.config.STAR_SIZE * i;
+      }
+    },
   };
 
   /**
@@ -1524,7 +1469,7 @@
    * @param {HTMLCanvasElement} canvas 画布
    * @param {Object} spritePos 雪碧图中的位置
    * @param {Object} dimensions 画布的尺寸
-   * @param {Number} gapCoefficient 间隙系数
+   * @param {Number} gapCoefficient 间隔系数
    */
   function Horizon(canvas, spritePos, dimensions, gapCoefficient) {
     this.canvas = canvas;
@@ -1532,7 +1477,6 @@
     this.spritePos = spritePos;
     this.dimensions = dimensions;
     this.gapCoefficient = gapCoefficient;
-    // this.config = Horizon.config;
 
     this.obstacles = [];       // 存储障碍物
     this.obstacleHistory = []; // 记录存储的障碍物的类型
@@ -1540,21 +1484,18 @@
     // 云的频率
     this.cloudFrequency = Cloud.config.CLOUD_FREQUENCY;
 
-    // 夜晚模式
-    this.nightMode = null;
-
     // 云
     this.clouds = [];
     this.cloudSpeed = Cloud.config.BG_CLOUD_SPEED;
-    
+
+    // 夜晚模式
+    this.nightMode = null;
+
     // 地面
     this.horizonLine = null;
-
+  
     this.init();
   }
-
-  // Horizon.config = {
-  // };
 
   Horizon.prototype = {
     init: function () {
@@ -1565,8 +1506,8 @@
     },
     update: function (deltaTime, currentSpeed, updateObstacles, showNightMode) {
       this.horizonLine.update(deltaTime, currentSpeed);
-      this.nightMode.update(showNightMode);
       this.updateCloud(deltaTime, currentSpeed);
+      this.nightMode.update(showNightMode);
 
       if (updateObstacles) {
         this.updateObstacles(deltaTime, currentSpeed);
@@ -1579,14 +1520,14 @@
     updateCloud: function (deltaTime, speed) {
       var cloudSpeed = Math.ceil(deltaTime * this.cloudSpeed * speed / 1000);
       var numClouds = this.clouds.length;
-
+  
       if (numClouds) {
         for (var i = numClouds - 1; i >= 0; i--) {
           this.clouds[i].update(cloudSpeed);
         }
-
+  
         var lastCloud = this.clouds[numClouds - 1];
-
+  
         // 检查是否需要添加新的云朵
         // 添加云朵的条件：云朵数量少于最大数量、
         // 最后一个云朵后面的空间大于它的间隙、
@@ -1596,7 +1537,7 @@
           this.cloudFrequency > Math.random()) {
           this.addCloud();
         }
-
+  
         // 删除 remove 属性为 true 的云朵
         this.clouds = this.clouds.filter(function (item) {
           return !item.remove;
@@ -1606,9 +1547,9 @@
       }
     },
     updateObstacles: function (deltaTime, currentSpeed) {
-      // 复制障碍物列表
+      // 复制存储的障碍物
       var updatedObstacles = this.obstacles.slice(0);
-
+  
       for (var i = 0; i < this.obstacles.length; i++) {
         var obstacle = this.obstacles[i];
         obstacle.update(deltaTime, currentSpeed);
@@ -1618,10 +1559,10 @@
           updatedObstacles.shift();
         }
       }
-
+  
       // 更新存储的障碍物
       this.obstacles = updatedObstacles;
-
+  
       if (this.obstacles.length > 0) {
         var lastObstacle = this.obstacles[this.obstacles.length - 1];
   
@@ -1667,9 +1608,9 @@
       }
     },
     /**
-     * 检查当前障碍物前面的障碍物的重复次数是否大于等于最大重复次数
-     * @param {String} nextObstacleType 障碍物类型
-     */
+      * 检查当前障碍物前面的障碍物的重复次数是否大于等于最大重复次数
+      * @param {String} nextObstacleType 障碍物类型
+      */
     duplicateObstacleCheck: function(nextObstacleType) {
       var duplicateCount = 0; // 重复次数
   
