@@ -59,6 +59,7 @@
     INVERT_DISTANCE: 700,                  // 触发夜晚模式的距离
     BOTTOM_PAD: 10,                        // 小恐龙距 canvas 底部的距离
     MAX_BLINK_COUNT: 3,                    // 小恐龙的最大眨眼次数
+    GAMEOVER_CLEAR_TIME: 750,              // 游戏结束后，允许使用跳跃键重新开始游戏的最短时间
   };
   
   // 游戏画布的默认尺寸
@@ -85,6 +86,7 @@
       CACTUS_LARGE: {x: 332, y: 2}, // 大仙人掌
       PTERODACTYL: {x: 134, y: 2},  // 翼龙
       TEXT_SPRITE: {x: 655, y: 2},  // 文字
+      RESTART: {x: 2, y: 2},        // 重置游戏按钮
       MOON: {x: 484, y: 2},
       STAR: {x: 645, y: 2},
       TREX: {x: 848, y: 2},         // 小恐龙
@@ -192,7 +194,6 @@
         this.setPlayStatus(true); // 设置游戏为进行状态
         this.activated = true;    // 游戏彩蛋被激活
       } else if (this.crashed) {
-        // 这个 restart 方法的逻辑这里先不实现
         this.restart();
       }
     },
@@ -219,8 +220,6 @@
       if (document.hidden || document.webkitHidden || e.type == 'blur' ||
         document.visibilityState != 'visible') {
         this.stop();
-
-        this.gameOver();
       } else if (!this.crashed) {
         this.play();
       }
@@ -277,17 +276,17 @@
 
         // 碰撞检测
         var collision = hasObstacles &&
-          checkForCollision(this.horizon.obstacles[0], this.tRex, this.ctx);
+          checkForCollision(this.horizon.obstacles[0], this.tRex);
 
-        // if (!collision) {
+        if (!collision) {
           this.distanceRan += this.currentSpeed * deltaTime / this.msPerFrame;
 
           if (this.currentSpeed < this.config.MAX_SPEED) {
             this.currentSpeed += this.config.ACCELERATION;
           }
-        // } else {
-        //   this.gameOver();
-        // }
+        } else {
+          this.gameOver();
+        }
 
         var playAchievementSound = this.distanceMeter.update(deltaTime,
           Math.ceil(this.distanceRan));
@@ -337,11 +336,20 @@
     // 游戏结束
     gameOver: function () {
       this.stop();
-      // this.crashed = true;
-      // this.distanceMeter.achievement = false; // 结束分数闪动特效
+      this.crashed = true;                    // 小恐龙撞到了障碍物
+      this.distanceMeter.achievement = false; // 结束分数闪动特效
 
-      // // 更新小恐龙为碰撞状态
-      // this.tRex.update(100, Trex.status.CRASHED);
+      // 更新小恐龙为碰撞状态
+      this.tRex.update(100, Trex.status.CRASHED);
+
+      // 绘制游戏结束面板
+      if (!this.gameOverPanel) {
+        this.gameOverPanel = new GameOverPanel(this.canvas,
+          this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
+          this.dimensions);
+      } else {
+        this.gameOverPanel.draw();
+      }
 
       if (this.distanceRan > this.highestScore) {
         this.highestScore = Math.ceil(this.distanceRan);
@@ -443,6 +451,15 @@
       } else if (Runner.keyCodes.DUCK[keyCode]) { // 躲避状态
         this.tRex.speedDrop = false;
         this.tRex.setDuck(false);
+      } else if (this.crashed) {
+        var deltaTime = getTimeStamp() - this.time;
+  
+        // 按下回车键或者等待 750 毫秒后，按下空格键，重新开始游戏
+        if (Runner.keyCodes.RESTART[keyCode] ||
+            (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
+            Runner.keyCodes.JUMP[keyCode])) {
+          this.restart();
+        }
       }
     },
     // 是否游戏正在进行
@@ -451,6 +468,25 @@
     },
     setPlayStatus: function (isPlaying) {
       this.playing = isPlaying;
+    },
+    // 重新开始游戏
+    restart: function() {
+      if (!this.raqId) {
+        this.runningTime = 0;
+        this.setPlayStatus(true);
+        this.paused = false;
+        this.crashed = false;
+        this.distanceRan = 0;
+        this.currentSpeed = this.config.SPEED;
+        this.time = getTimeStamp();
+        this.clearCanvas();
+        this.distanceMeter.reset();
+        this.horizon.reset();
+        this.tRex.reset();
+        // this.playSound(this.soundFx.BUTTON_PRESS);
+        this.invert(true);
+        this.update();
+      }
     },
   };
   
@@ -494,6 +530,72 @@
   }
 
   // ==========================================
+
+  /**
+   * 游戏结束面板类
+   * @param {HTMLCanvasElement} 画布元素
+   * @param {Object} textImgPos 文字 "Game Over" 在雪碧图中的位置
+   * @param {Object} restartImgPos 重置按钮在雪碧图中的位置
+   * @param {!Object} dimensions 游戏画布的尺寸
+   */
+  function GameOverPanel(canvas, textImgPos, restartImgPos, dimensions) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.canvasDimensions = dimensions;
+    this.textImgPos = textImgPos;
+    this.restartImgPos = restartImgPos;
+
+    this.draw();
+  };
+
+  // 配置参数
+  GameOverPanel.dimensions = {
+    TEXT_X: 0,          // 文字 "Game Over" 的 x 坐标
+    TEXT_Y: 13,
+    TEXT_WIDTH: 191,    // 文字 "Game Over" 的宽度
+    TEXT_HEIGHT: 11,
+    RESTART_WIDTH: 36,  // 重置按钮的宽度
+    RESTART_HEIGHT: 32,
+  };
+
+  GameOverPanel.prototype = {
+    draw: function() {
+      var dimensions = GameOverPanel.dimensions;
+      var centerX = this.canvasDimensions.WIDTH / 2;
+  
+      // 文字 "Game Over"
+      var textSourceX = dimensions.TEXT_X;
+      var textSourceY = dimensions.TEXT_Y;
+      var textSourceWidth = dimensions.TEXT_WIDTH;
+      var textSourceHeight = dimensions.TEXT_HEIGHT;
+  
+      var textTargetX = Math.round(centerX - (dimensions.TEXT_WIDTH / 2));
+      var textTargetY = Math.round((this.canvasDimensions.HEIGHT - 25) / 3);
+      var textTargetWidth = dimensions.TEXT_WIDTH;
+      var textTargetHeight = dimensions.TEXT_HEIGHT;
+  
+      // 重置按钮
+      var restartSourceWidth = dimensions.RESTART_WIDTH;
+      var restartSourceHeight = dimensions.RESTART_HEIGHT;
+      var restartTargetX = centerX - (dimensions.RESTART_WIDTH / 2);
+      var restartTargetY = this.canvasDimensions.HEIGHT / 2;
+  
+      textSourceX += this.textImgPos.x;
+      textSourceY += this.textImgPos.y;
+  
+      // 文字 "Game over"
+      this.ctx.drawImage(Runner.imageSprite,
+        textSourceX, textSourceY, textSourceWidth, textSourceHeight,
+        textTargetX, textTargetY, textTargetWidth, textTargetHeight);
+  
+      // 重置按钮
+      this.ctx.drawImage(Runner.imageSprite,
+        this.restartImgPos.x, this.restartImgPos.y,
+        restartSourceWidth, restartSourceHeight,
+        restartTargetX, restartTargetY, dimensions.RESTART_WIDTH,
+        dimensions.RESTART_HEIGHT);
+    }
+  };
 
   /**
    * Horizon 背景类
@@ -596,6 +698,10 @@
      */
     getRandomType: function () {
       return Math.random() > this.bumpThreshold ? this.dimensions.WIDTH : 0;
+    },
+    reset: function() {
+      this.xPos[0] = 0;
+      this.xPos[1] = HorizonLine.dimensions.WIDTH;
     },
   };
 
@@ -1504,6 +1610,11 @@
       // 分数前面字母 H、I 在雪碧图中位于数字后面，也就是第 10、11 位置
       this.highScore = ['10', '11', ''].concat(highScoreStr.split(''));
     },
+    // 重置当前分数为 '00000'
+    reset: function() {
+      this.update(0);
+      this.achievement = false;
+    }
   };
 
   /**
@@ -1655,6 +1766,11 @@
         this.stars[i].sourceY = Runner.spriteDefinition.LDPI.STAR.y +
             NightMode.config.STAR_SIZE * i;
       }
+    },
+    reset: function() {
+      this.currentPhase = 0;
+      this.opacity = 0;
+      this.update(false);
     },
   };
 
@@ -1814,6 +1930,12 @@
             duplicateCount + 1 : 0;
       }
       return duplicateCount >= Runner.config.MAX_OBSTACLE_DUPLICATION;
+    },
+    // 重置背景类
+    reset: function() {
+      this.obstacles = [];
+      this.horizonLine.reset();
+      this.nightMode.reset();
     },
   };
 })();
