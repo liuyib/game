@@ -6,11 +6,21 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Breakout</title>
   <link rel="stylesheet" href="./index.css">
-  <script src="./utils.js"></script>
 </head>
 <body>
-  <canvas id="myCanvas" width="600" height="500"></canvas>
+  <!-- 整个游戏的容器元素 -->
+  <div id="breakout-root"></div>
 
+  <div id="breakout-source">
+    <img id="breakout-sprite-img" src="./img/breakout-sprite.png" alt="sprite">
+  </div>
+
+  <script src="./js/utils.js"></script>
+  <script src="./js/paddle.js"></script>
+  <script src="./js/ball.js"></script>
+  <script src="./js/brick.js"></script>
+  <script src="./js/panel.js"></script>
+  <script src="./js/main.js"></script>
   <script src="./index.js"></script>
 </body>
 </html>
