@@ -44,83 +44,70 @@ function CollisionBox(x, y, w, h) {
   this.h = h;
 }
 
-/**
- * 检测小球碰撞到挡板的位置是上面还是两边
- * @param {Object} ball 小球
- * @param {Object} obstacle 障碍物（挡板，砖块）
- * @param {HTMLCanvasContext} opt_canvas 画布元素
- * @return {String}
- */
+// 检测小球和其他矩形障碍物是否碰撞
 function checkCollision(ball, obstacle, opt_canvas) {
-  var ballBox = new CollisionBox(
-    ball.xPos, ball.yPos,
-    ball.dimensions.WIDTH, ball.dimensions.HEIGHT
-  );
-  var obstacleBox = new CollisionBox(
-    obstacle.xPos, obstacle.yPos,
-    obstacle.dimensions.WIDTH, obstacle.dimensions.HEIGHT
-  );
+  var b = ball;
+  var o = obstacle;
 
-  // debug - 绘制碰撞盒子
-  if (opt_canvas) {
-    drawCollisionBoxes(opt_canvas, ballBox, obstacleBox);
-  }
+  // 小球和挡板碰撞
+  if (o.type == 'paddle') {
+    // 生成最外层的碰撞盒子
+    var ballBox = createCollisionBox(b);
+    var obstacleBox = createCollisionBox(o);
 
-  // 最外层的盒子碰撞
-  if (boxCompare(ballBox, obstacleBox)) {
-    if (ballBox.y + (ballBox.h / 2) <
-      obstacleBox.y + (obstacleBox.h) / 2) {
-        log(1);
-      var bBoxes = ball.collisionBoxes;     // 小球的碰撞盒子
-      var oBoxes = obstacle.collisionBoxes; // 障碍物的碰撞盒子
+    // 根据挡板外层的碰撞盒子，调整内层盒子的位置
+    var paddleTopBox =
+      adjustCollisionBox(o.topCollisionBoxes[0], obstacleBox);
 
-      for (var i = 0; i < bBoxes.length; i++) {
-        for (var j = 0; j < oBoxes.length; j++) {
-          // 基于最外层的碰撞盒子，来调整里面小碰撞盒子的位置
-          var adjustBallBox =
-            adjustCollisionBox(bBoxes[i], ballBox);
-          var adjustObstacleBox =
-            adjustCollisionBox(oBoxes[j], obstacleBox);
-          
-          if (opt_canvas) {
-            drawCollisionBoxes(opt_canvas,
-              adjustBallBox, adjustObstacleBox);
-          }
-  
-          if (boxCompare(adjustBallBox, adjustObstacleBox)) {
-            return 'side';
-          }
-        }
+    for (var i = 0; i < o.sideCollisionBoxes.length; i++) {
+      var paddleSideBox =
+        adjustCollisionBox(o.sideCollisionBoxes[i], obstacleBox);
+      
+      // 撞到挡板两侧
+      if (detectCollision(ballBox, paddleSideBox, opt_canvas)) {
+        return 'side';
       }
-  
-      return 'up';
-    } else {
-      return 'drop';
+    }
+
+    // 撞到挡板顶部
+    if (detectCollision(ballBox, paddleTopBox, opt_canvas)) {
+      return 'top';
     }
   }
 
-  return '';
+  return 'none';
+}
+
+// 通过对象的坐标信息和尺寸生成碰撞盒子
+function createCollisionBox(obj) {
+  return {
+    x: obj.xPos,
+    y: obj.yPos,
+    w: obj.dimensions.WIDTH,
+    h: obj.dimensions.HEIGHT,
+  };
 }
 
 /**
- * 绘制碰撞盒子（debug 时使用）
- * @param {HTMLCanvasElement} canvas 画布元素
- * @param {CollisionBox} ballBox 小球的碰撞盒子
- * @param {CollisionBox} paddleBox 挡板的碰撞盒子
- * @param {CollisionBox} brickBox 砖块的碰撞盒子
+ * 根据外层碰撞盒子计算出内层碰撞盒子的信息
+ * @param {CollisionBox} box 原来的碰撞盒子
+ * @param {CollisionBox} referBox 参考的碰撞盒子
  */
-function drawCollisionBoxes(canvas, ballBox, paddleBox, brickBox) {
-  var ctx = canvas.getContext('2d');
+function adjustCollisionBox(box, referBox) {
+  return new CollisionBox(
+    box.x + referBox.x,
+    box.y + referBox.y,
+    box.w, box.h
+  );
+}
 
+// 绘制矩形碰撞盒子
+function drawRectCollisionBoxes(paddleBox, brickBox, canvas) {
+  var ctx = canvas.getContext('2d');
   ctx.save();
 
-  if (ballBox) {
-    ctx.strokeStyle = '#0f0';
-    ctx.strokeRect(ballBox.x, ballBox.y, ballBox.w, ballBox.h);
-  }
-
   if (paddleBox) {
-    ctx.strokeStyle = '#f00';
+    ctx.strokeStyle = '#0f0';
     ctx.strokeRect(paddleBox.x, paddleBox.y, paddleBox.w, paddleBox.h);
   }
 
@@ -132,35 +119,67 @@ function drawCollisionBoxes(canvas, ballBox, paddleBox, brickBox) {
   ctx.restore();
 }
 
-/**
- * 比较两个盒子是否碰撞
- * 有上下碰撞和左右碰撞两种情况
- * @param {Object} box1
- * @param {Object} box2
- * @return {String}
- */
-function boxCompare(box1, box2) {
-  var collided = false;
-  var b1 = box1;
-  var b2 = box2;
+// 绘制圆形碰撞盒子
+function drawBallCollisionBoxes(ball, canvas) {
+  var ctx = canvas.getContext('2d');
+  ctx.save();
 
-  if (b1.x + b1.w > b2.x && b1.x < b2.x + b2.w &&
-    b1.y + b1.h > b2.y && b1.y < b2.y + b2.h) {
-    collided = true;
-  }
+  ctx.beginPath();
+  ctx.strokeStyle = '#f00';
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.stroke();
 
-  return collided;
+  ctx.restore();
 }
 
 /**
- * 调整碰撞盒子
- * @param {CollisionBox} box 原来的碰撞盒子
- * @param {CollisionBox} referBox 参考的碰撞盒子
+ * 检测圆和矩形（非旋转）是否相撞
+ * @param {Object} circleBox 圆形的碰撞盒子
+ * @param {Object} rectBox 矩形的碰撞盒子
+ * @param {HTMLCanvasElement} opt_canvas 画布元素
  */
-function adjustCollisionBox(box, referBox) {
-  return new CollisionBox(
-    box.x + referBox.x,
-    box.y + referBox.y,
-    box.w, box.h
-  );
+function detectCollision(circleBox, rectBox, opt_canvas) {
+  var tx, ty; // 矩形上距离圆最近的点
+  var r = rectBox;
+  var c = {
+    // 圆心坐标
+    x: circleBox.x + circleBox.w / 2,
+    y: circleBox.y + circleBox.h / 2,
+    // 半径
+    r: circleBox.w / 2,
+  };
+
+  if (opt_canvas) {
+    // debug - 绘制圆形的碰撞范围
+    drawBallCollisionBoxes(c, opt_canvas);
+    // debug - 绘制矩形的碰撞范围
+    drawRectCollisionBoxes(r, opt_canvas);
+  }
+
+  if (c.x < r.x) {
+    tx = r.x;
+  } else if (c.x > r.x + r.w) {
+    tx = r.x + r.w;
+  } else {
+    tx = c.x;
+  }
+
+  if (c.y < r.y) {
+    ty = r.y;
+  } else if (c.y > r.y + r.h) {
+    ty = r.y + r.h;
+  } else {
+    ty = c.y;
+  }
+
+  if (distance(c.x, c.y, tx, ty) < c.r) {
+    return true;
+  }
+
+  return false;
+}
+
+// 计算两点间的距离
+function distance(x1, y1, x2, y2) {
+  return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 }

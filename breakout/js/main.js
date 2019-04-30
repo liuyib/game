@@ -154,24 +154,34 @@ Breakout.prototype = {
       // 更新挡板
       this.paddle.update(isMove, isLeftMove);
 
-      // 小球是否撞到挡板
-      var collision = checkCollision(this.ball, this.paddle, this.canvas);
-      // var collision = checkCollision(this.ball, this.paddle);
+      // 是否碰撞 第三个参数传入 canvas 进行 debug
+      var collision = checkCollision(this.ball, this.paddle);
+      // var collision = checkCollision(this.ball, this.paddle, this.canvas);
 
-      if (collision == 'up') {
-        log('up');
-        this.ball.speedY *= -1;
-      } else if (collision == 'side') {
-        log('side');
-        this.ball.speedX *= -1;
-        this.ball.speedY *= -1;
-      } else if (collision == 'drop') {
-        log('drop');
-        this.ball.speedX = 0;
-        this.ball.speedY = 0;
-        this.gameOver();
+      // 小球的垂直中心
+      var ballCenter = this.ball.yPos + this.ball.dimensions.HEIGHT / 2;
+      // 挡板的垂直中心
+      var paddleCenter = this.paddle.yPos + this.paddle.dimensions.HEIGHT / 2;
+
+      if (collision == 'top') { // 小球撞到挡板顶部
+        // 小球向着障碍物运动
+        if ((ballCenter - paddleCenter) >
+          (ballCenter - this.ball.speedY - paddleCenter)) {
+          this.ball.speedY *= -1;
+        } else {
+          this.ball.speedY *= 1;
+        }
+      } else if (collision == 'side') { // 小球撞到挡板两侧
+        if ((ballCenter - paddleCenter) >
+          (ballCenter - this.ball.speedY - paddleCenter)) {
+          this.ball.speedX *= -1;
+          this.ball.speedY *= -1;
+        } else {
+          this.ball.speedX *= 1;
+          this.ball.speedY *= 1;
+        }
       }
-      
+
       // 小球没有掉落
       if (!this.droped) {
         // 进行下一次更新

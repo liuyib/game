@@ -10,14 +10,13 @@ function Ball(canvas, spritePos) {
   this.dimensions = Ball.dimensions;
   this.config = Ball.config;
 
+  // 左上角的坐标
   this.xPos = 0;
   this.yPos = 0;
 
+  // X、Y 方向上的速度
   this.speedX = 0;
   this.speedY = 0;
-
-  // 碰撞盒子
-  this.collisionBoxes = [];
 
   this.init();
 }
@@ -35,12 +34,6 @@ Ball.dimensions = {
 
 Ball.prototype = {
   init: function () {
-    this.collisionBoxes = [
-      new CollisionBox(6, 2, 18, 26),
-      new CollisionBox(4, 4, 22, 22),
-      new CollisionBox(2, 6, 26, 18),
-    ];
-    
     this.reset();
     this.draw();
   },
@@ -65,7 +58,7 @@ Ball.prototype = {
    * @return {Boolean}
    */
   update: function () {
-    var isDroped = false;
+    var isDroped = false; // 小球是否落到地面
 
     this.xPos += this.speedX;
     this.yPos += this.speedY;
@@ -77,6 +70,7 @@ Ball.prototype = {
     if (this.yPos < 0) {
       this.speedY *= -1;
     }
+    // 小球落到地面
     if (this.yPos > 
       Breakout.dimensions.HEIGHT - this.dimensions.HEIGHT) {
         isDroped = true;

@@ -11,12 +11,15 @@ function Paddle(canvas, spritePos) {
   this.dimensions = Paddle.dimensions;
   this.config = Paddle.config;
 
+  this.type = '';
+
   // 坐标
   this.xPos = 0;
   this.yPos = 0;
 
   // 碰撞盒子
-  this.collisionBoxes = [];
+  this.topCollisionBoxes = [];  // 挡板顶部的碰撞盒子
+  this.sideCollisionBoxes = []; // 挡板两边的碰撞盒子
 
   this.init();
 }
@@ -34,22 +37,16 @@ Paddle.dimensions = {
 
 Paddle.prototype = {
   init: function () {
-    // this.collisionBoxes = {
-    //   top: [ // 顶部
-    //     new CollisionBox(5, 0, 110, 3)
-    //   ],
-    //   side: [ // 两侧
-    //     new CollisionBox(3, 3, 114, 4),
-    //     new CollisionBox(1, 5, 118, 4),
-    //     new CollisionBox(0, 7, 120, 2),
-    //   ],
-    // }
-    this.collisionBoxes = [
+    this.type = 'paddle';
+    
+    this.topCollisionBoxes = [
+      new CollisionBox(5, 0, 110, 3),
+    ];
+    this.sideCollisionBoxes = [
       new CollisionBox(3, 3, 114, 4),
       new CollisionBox(1, 5, 118, 4),
       new CollisionBox(0, 7, 120, 2),
     ];
-    
     this.xPos = (Breakout.dimensions.WIDTH - this.dimensions.WIDTH) / 2;
     this.yPos = Breakout.dimensions.HEIGHT -
       Breakout.config.PADDLE_BOTTOM_MARGIN - this.dimensions.HEIGHT;
