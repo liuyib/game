@@ -75,20 +75,26 @@ Paddle.prototype = {
   },
   /**
    * 更新挡板
-   * @param {Boolean} isMove 是否移动
    * @param {Boolean} isLeftMove 是否左移
+   * @param {Boolean} isRightMove 是否右移
    */
-  update: function (isMove, isLeftMove) {
-    if (isMove) {
-      var deltaXPos = (isLeftMove ? -1 : 1) * this.config.SPEED;
+  update: function (isLeftMove, isRightMove) {
+    if (isLeftMove || isRightMove) {
+      var deltaXPos = 0;
+
+      if (isLeftMove) {
+        deltaXPos = -this.config.SPEED;
+      } else if (isRightMove) {
+        deltaXPos = this.config.SPEED;
+      }
   
       this.xPos += deltaXPos;
-    }
 
-    // 限制移动范围
-    if (this.xPos < 0) this.xPos = 0;
-    if (this.xPos + this.dimensions.WIDTH > Breakout.dimensions.WIDTH)
-      this.xPos = Breakout.dimensions.WIDTH - this.dimensions.WIDTH;
+      // 限制移动范围
+      if (this.xPos < 0) this.xPos = 0;
+      if (this.xPos + this.dimensions.WIDTH > Breakout.dimensions.WIDTH)
+        this.xPos = Breakout.dimensions.WIDTH - this.dimensions.WIDTH;
+    }
 
     // 重新绘制挡板
     this.draw();

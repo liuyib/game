@@ -143,7 +143,6 @@ Breakout.prototype = {
       var currentKeyCode = this.keys[0];
       var isLeftMove = Breakout.keyCodes.LEFT[currentKeyCode];
       var isRightMove = Breakout.keyCodes.RIGHT[currentKeyCode];
-      var isMove = isLeftMove || isRightMove;
 
       // 小球是否落到地面
       var isPlayingIntro = this.ball.update();
@@ -153,7 +152,7 @@ Breakout.prototype = {
       }
 
       // 更新挡板
-      this.paddle.update(isMove, isLeftMove);
+      this.paddle.update(isLeftMove, isRightMove);
 
       // 是否碰撞 第三个参数传入 canvas 进行 debug
       // var pCollision = checkCollision(this.ball, this.paddle);
