@@ -1,0 +1,65 @@
+/**
+ * 砖块类
+ * @param {HTMLCanvasElement} canvas 画布元素
+ * @param {Object} spritePos 在雪碧图中的坐标
+ */
+function Brick(canvas, spritePos) {
+  this.canvas = canvas;
+  this.canvasCtx = canvas.getContext('2d');
+  this.spritePos = spritePos;
+  this.dimensions = Brick.dimensions;
+
+  // 坐标
+  this.xPos = 0;
+  this.yPos = 0;
+
+  // 碰撞盒子
+  this.collisionBoxes = [];
+
+  this.life = 0;           // 砖块的生命值
+  this.isRemove = false;   // 是否被移除
+  this.gap = 0;            // 砖块之间的间隙
+
+  this.init();
+}
+
+// 尺寸设置
+Brick.dimensions = {
+  WIDTH: 50,
+  HEIGHT: 20,
+};
+
+// 不同砖块在雪碧图中的 y 坐标
+Brick.spriteYPos = [0, 22, 44, 66, 88];
+
+Brick.prototype = {
+  init: function () {
+    this.gap = Breakout.config.BRICK_GAP;
+
+    this.collisionBoxes = [
+      new CollisionBox(1, 0, 48, 1),  // 上
+      new CollisionBox(49, 1, 1, 18), // 右
+      new CollisionBox(1, 19, 48, 1), // 下
+      new CollisionBox(0, 1, 1, 18),   // 左
+    ];
+  },
+  draw: function () {
+    var sourceWidth = this.dimensions.WIDTH;
+    var sourceHeight = this.dimensions.HEIGHT;
+
+    var targetWidth = sourceWidth;
+    var targetHeight = sourceHeight;
+
+    // 砖块的生命值不为零
+    if (this.life) {
+      this.canvasCtx.drawImage(
+        Breakout.imageSprite,
+        this.spritePos.x,
+        this.spritePos.y + Brick.spriteYPos[this.life],
+        sourceWidth, sourceHeight,
+        this.xPos, this.yPos,
+        targetWidth, targetHeight
+      );
+    }
+  },
+};

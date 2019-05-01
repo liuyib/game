@@ -88,6 +88,32 @@ function checkBallPaddleCollision(ball, paddle, opt_canvas) {
   return 'none';
 }
 
+// 检测小球和砖块是否碰撞
+function checkBallBrickCollision(ball, brick, opt_canvas) {
+  // 生成最外层的碰撞盒子
+  var ballBox = createCollisionBox(ball);
+  var brickBox = createCollisionBox(brick);
+
+  // 外层碰撞
+  if (detectCollision(ballBox, brickBox, opt_canvas)) {
+    for (var i = 0; i < brick.collisionBoxes.length; i++) {
+      var brInnerBox = brick.collisionBoxes[i];
+      var adjustBox = adjustCollisionBox(brInnerBox, brickBox);
+
+      if (detectCollision(ballBox, adjustBox, opt_canvas)) {
+        switch(i) {
+          case 0: return 'top'; break;
+          case 1: return 'right'; break;
+          case 2: return 'bottom'; break;
+          case 3: return 'left'; break;
+        }
+      }
+    }
+  }
+
+  return 'none';
+}
+
 // 通过对象的坐标信息和尺寸生成碰撞盒子
 function createCollisionBox(obj) {
   return {

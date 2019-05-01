@@ -25,7 +25,7 @@ function Paddle(canvas, spritePos) {
 
 // 配置参数
 Paddle.config = {
-  SPEED: 6,
+  SPEED: 3.5,
 };
 
 // 尺寸设置
