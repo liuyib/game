@@ -18,15 +18,16 @@ function Paddle(canvas, spritePos) {
   this.yPos = 0;
 
   // 碰撞盒子
-  this.topCollisionBoxes = [];  // 挡板顶部的碰撞盒子
-  this.sideCollisionBoxes = []; // 挡板两边的碰撞盒子
+  this.topCollisionBoxes = [];   // 挡板顶部的碰撞盒子
+  this.leftCollisionBoxes = [];  // 挡板左边的碰撞盒子
+  this.rightCollisionBoxes = []; // 挡板右边的碰撞盒子
 
   this.init();
 }
 
 // 配置参数
 Paddle.config = {
-  SPEED: 8,
+  SPEED: 6,
 };
 
 // 尺寸设置
@@ -42,10 +43,15 @@ Paddle.prototype = {
     this.topCollisionBoxes = [
       new CollisionBox(5, 0, 110, 3),
     ];
-    this.sideCollisionBoxes = [
-      new CollisionBox(3, 3, 114, 4),
-      new CollisionBox(1, 5, 118, 4),
-      new CollisionBox(0, 7, 120, 2),
+    this.leftCollisionBoxes = [
+      new CollisionBox(3, 3, 57, 4),
+      new CollisionBox(1, 5, 59, 4),
+      new CollisionBox(0, 7, 60, 2),
+    ];
+    this.rightCollisionBoxes = [
+      new CollisionBox(60, 3, 57, 4),
+      new CollisionBox(60, 5, 59, 4),
+      new CollisionBox(60, 7, 60, 2),
     ];
     this.xPos = (Breakout.dimensions.WIDTH - this.dimensions.WIDTH) / 2;
     this.yPos = Breakout.dimensions.HEIGHT -

@@ -155,15 +155,15 @@ Breakout.prototype = {
       this.paddle.update(isMove, isLeftMove);
 
       // 是否碰撞 第三个参数传入 canvas 进行 debug
-      var collision = checkCollision(this.ball, this.paddle);
-      // var collision = checkCollision(this.ball, this.paddle, this.canvas);
+      // var pCollision = checkCollision(this.ball, this.paddle);
+      var pCollision = checkCollision(this.ball, this.paddle, this.canvas);
 
       // 小球的垂直中心
       var ballCenter = this.ball.yPos + this.ball.dimensions.HEIGHT / 2;
       // 挡板的垂直中心
       var paddleCenter = this.paddle.yPos + this.paddle.dimensions.HEIGHT / 2;
 
-      if (collision == 'top') { // 小球撞到挡板顶部
+      if (pCollision == 'top') { // 小球撞到挡板顶部
         // 小球向着障碍物运动
         if ((ballCenter - paddleCenter) >
           (ballCenter - this.ball.speedY - paddleCenter)) {
@@ -171,15 +171,15 @@ Breakout.prototype = {
         } else {
           this.ball.speedY *= 1;
         }
-      } else if (collision == 'side') { // 小球撞到挡板两侧
-        if ((ballCenter - paddleCenter) >
-          (ballCenter - this.ball.speedY - paddleCenter)) {
-          this.ball.speedX *= -1;
-          this.ball.speedY *= -1;
-        } else {
-          this.ball.speedX *= 1;
-          this.ball.speedY *= 1;
-        }
+      } else if (pCollision == 'left') { // 小球撞到挡板两侧
+        this.ball.speedX = -Math.abs(this.ball.speedX);
+        this.ball.speedY = -Math.abs(this.ball.speedY);
+      } else if (pCollision == 'right') {
+        this.ball.speedX = Math.abs(this.ball.speedX);
+        this.ball.speedY = -Math.abs(this.ball.speedY);
+      } else { // 没有碰撞或碰撞部位不允许反弹
+        this.ball.speedX *= 1;
+        this.ball.speedY *= 1;
       }
 
       // 小球没有掉落
