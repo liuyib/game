@@ -28,8 +28,8 @@ Ball.config = {
 
 // 尺寸设置
 Ball.dimensions = {
-  WIDTH: 30,
-  HEIGHT: 30,
+  WIDTH: 20,
+  HEIGHT: 20,
 };
 
 Ball.prototype = {
