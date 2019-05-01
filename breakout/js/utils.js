@@ -102,7 +102,7 @@ function adjustCollisionBox(box, referBox) {
 }
 
 // 绘制矩形碰撞盒子
-function drawRectCollisionBoxes(paddleBox, brickBox, canvas) {
+function drawRectCollisionBoxes(canvas, paddleBox, brickBox) {
   var ctx = canvas.getContext('2d');
   ctx.save();
 
@@ -120,7 +120,7 @@ function drawRectCollisionBoxes(paddleBox, brickBox, canvas) {
 }
 
 // 绘制圆形碰撞盒子
-function drawBallCollisionBoxes(ball, canvas) {
+function drawBallCollisionBoxes(canvas, ball) {
   var ctx = canvas.getContext('2d');
   ctx.save();
 
@@ -151,9 +151,9 @@ function detectCollision(circleBox, rectBox, opt_canvas) {
 
   if (opt_canvas) {
     // debug - 绘制圆形的碰撞范围
-    drawBallCollisionBoxes(c, opt_canvas);
+    drawBallCollisionBoxes(opt_canvas, c);
     // debug - 绘制矩形的碰撞范围
-    drawRectCollisionBoxes(r, opt_canvas);
+    drawRectCollisionBoxes(opt_canvas, r);
   }
 
   if (c.x < r.x) {
