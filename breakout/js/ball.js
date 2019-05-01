@@ -63,17 +63,22 @@ Ball.prototype = {
     this.xPos += this.speedX;
     this.yPos += this.speedY;
 
-    if (this.xPos < 0 || this.xPos >
+    // 当小球运动到边界时，不要直接对其速度进行取反
+    // 否则，当“像素穿透”时，小球会卡在边界
+    if (this.xPos < 0) {
+      this.speedX = Math.abs(this.speedX);
+    }
+    if (this.xPos >
       Breakout.dimensions.WIDTH - this.dimensions.WIDTH) {
-      this.speedX *= -1;
+      this.speedX = -Math.abs(this.speedX);
     }
     if (this.yPos < 0) {
-      this.speedY *= -1;
+      this.speedY = Math.abs(this.speedY);
     }
     // 小球落到地面
     if (this.yPos > 
       Breakout.dimensions.HEIGHT - this.dimensions.HEIGHT) {
-        isDroped = true;
+      isDroped = true;
     }
 
     this.draw();
