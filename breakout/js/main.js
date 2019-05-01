@@ -13,13 +13,13 @@ function Breakout(containerElemId, opt_config) {
   this.dimensions = Breakout.dimensions;        // 游戏的默认尺寸
 
   // this.msPerFrame = 1000 / FPS;                 // 每帧的时间
-  this.activited = false;                       // 游戏是否激活
-  this.playingIntro = false;                    // 是否正在执行开场动画
-  this.playing = false;                         // 游戏是否开始
-  this.droped = false;                          // 小球是否落到地面
-  this.paused = false;                          // 游戏是否暂停
+  this.isActivited = false;                       // 游戏是否激活
+  this.isPlayingIntro = false;                    // 是否正在执行开场动画
+  this.isPlaying = false;                         // 游戏是否开始
+  this.isDroped = false;                          // 小球是否落到地面
+  this.isPaused = false;                          // 游戏是否暂停
 
-  this.keys = [];                               // 存储按下的键
+  this.keys = [];                                 // 存储按下的键
 
   // 挡板
   this.paddle = null;
@@ -46,6 +46,7 @@ var FPS = 60;
 // 游戏的配置参数
 Breakout.config = {
   PADDLE_BOTTOM_MARGIN: 20,   // 挡板距底部的距离
+  BRICK_GAP: 20,              // 砖块之间的间隔
 };
 
 // 游戏的默认尺寸
@@ -135,7 +136,7 @@ Breakout.prototype = {
   },
   // 更新游戏画布
   update: function () {
-    if (this.playing) {
+    if (this.isPlaying) {
       this.clearCanvas();
 
       // 最后一次按下的键盘码
@@ -145,9 +146,9 @@ Breakout.prototype = {
       var isMove = isLeftMove || isRightMove;
 
       // 小球是否落到地面
-      var isDroped = this.ball.update();
+      var isPlayingIntro = this.ball.update();
 
-      if (isDroped) {
+      if (isPlayingIntro) {
         this.gameOver();
       }
 
@@ -183,7 +184,7 @@ Breakout.prototype = {
       }
 
       // 小球没有掉落
-      if (!this.droped) {
+      if (!this.isDroped) {
         // 进行下一次更新
         this.reqAFId = requestAnimationFrame(this.update.bind(this));
       }
@@ -214,15 +215,15 @@ Breakout.prototype = {
   },
   onKeyDown: function (e) {
     // 游戏没有暂停，并且小球没有落到地面上
-    if (!this.droped && !this.paused) {
+    if (!this.isDroped && !this.isPaused) {
       // 按下空格，开始游戏
       if (Breakout.keyCodes.START[e.keyCode] &&
-        !this.playing && !this.playingIntro) {
+        !this.isPlaying && !this.isPlayingIntro) {
         this.playIntro(); // 执行开场动画
       }
 
       // 只存储新的键盘码
-      if (this.playing && e.keyCode != this.keys[0]) {
+      if (this.isPlaying && e.keyCode != this.keys[0]) {
         this.keys.unshift(e.keyCode);
       }
     }
@@ -233,15 +234,15 @@ Breakout.prototype = {
       this.keys.length = 0;
     }
 
-    if (this.droped && Breakout.keyCodes.START[e.keyCode]) {
+    if (this.isDroped && Breakout.keyCodes.START[e.keyCode]) {
       this.restart();
     }
   },
   // 执行开场动画
   playIntro: function () {
-    if (!this.activited && !this.droped) {
-      this.activited = true;
-      this.playingIntro = true;
+    if (!this.isActivited && !this.isDroped) {
+      this.isActivited = true;
+      this.isPlayingIntro = true;
       this.startArcadeMode();
     }
   },
@@ -267,8 +268,8 @@ Breakout.prototype = {
   },
   // 开始游戏
   startGame: function () {
-    this.playingIntro = false; // 开场动画结束
-    this.playing = true;       // 游戏开始
+    this.isPlayingIntro = false; // 开场动画结束
+    this.isPlaying = true;       // 游戏开始
 
     this.update();
 
@@ -288,23 +289,23 @@ Breakout.prototype = {
   },
   // 进行游戏
   play: function () {
-    if (!this.droped) {
-      this.playing = true;
-      this.paused = false;
+    if (!this.isDroped) {
+      this.isPlaying = true;
+      this.isPaused = false;
       this.update();
     }
   },
   // 暂停游戏
   stop: function () {
-    this.playing = false;
-    this.paused = true;
+    this.isPlaying = false;
+    this.isPaused = true;
     cancelAnimationFrame(this.reqAFId);
     this.reqAFId = 0;
   },
   // 游戏结束
   gameOver: function () {
     this.stop();
-    this.droped = true;
+    this.isDroped = true;
 
     // 绘制 Game Over 面板
     if (!this.panel) {
@@ -316,10 +317,10 @@ Breakout.prototype = {
   },
   // 重新开始游戏
   restart: function () {
-    this.playing = true;
-    this.playingIntro = false;
-    this.droped = false;
-    this.paused = false;
+    this.isPlaying = true;
+    this.isPlayingIntro = false;
+    this.isDroped = false;
+    this.isPaused = false;
     this.ball.reset();
     this.update();
   },

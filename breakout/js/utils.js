@@ -45,7 +45,7 @@ function CollisionBox(x, y, w, h) {
 }
 
 // 检测小球和其他矩形障碍物是否碰撞
-function checkCollision(ball, obstacle, opt_canvas) {
+function checkPaddleCollision(ball, obstacle, opt_canvas) {
   var b = ball;
   var o = obstacle;
 
