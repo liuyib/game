@@ -171,10 +171,10 @@ Breakout.prototype = {
         } else {
           this.ball.speedY *= 1;
         }
-      } else if (pCollision == 'left') { // 小球撞到挡板两侧
+      } else if (pCollision == 'left') { // 小球撞到挡板左侧
         this.ball.speedX = -Math.abs(this.ball.speedX);
         this.ball.speedY = -Math.abs(this.ball.speedY);
-      } else if (pCollision == 'right') {
+      } else if (pCollision == 'right') { // 小球撞到挡板右侧
         this.ball.speedX = Math.abs(this.ball.speedX);
         this.ball.speedY = -Math.abs(this.ball.speedY);
       } else { // 没有碰撞或碰撞部位不允许反弹

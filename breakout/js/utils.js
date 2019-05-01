@@ -59,27 +59,31 @@ function checkCollision(ball, obstacle, opt_canvas) {
     // 否则，小球不可能再反弹上去
     if (ballBox.y + ballBox.h / 2 <
       obstacleBox.y + obstacleBox.h / 2) {
-      // 根据挡板外层的碰撞盒子，调整内层盒子的位置
-      var paddleTopBox =
-        adjustCollisionBox(o.topCollisionBoxes[0], obstacleBox);
-
-      for (var i = 0; i < o.leftCollisionBoxes.length; i++) {
-        var paddleLeftBox =
-          adjustCollisionBox(o.leftCollisionBoxes[i], obstacleBox);
-        var paddleRightBox =
-          adjustCollisionBox(o.rightCollisionBoxes[i], obstacleBox);
-
-        if (detectCollision(ballBox, paddleLeftBox, opt_canvas)) {
-          return 'left';
-        } else if (detectCollision(ballBox,
-          paddleRightBox, opt_canvas)) {
-          return 'right';
+      // 先检测外层盒子，当外层盒子碰撞后，再检测内层，以此来优化性能
+      if (detectCollision(ballBox, obstacleBox, opt_canvas)) {
+        // 根据挡板外层的碰撞盒子，调整内层盒子的位置
+        var paddleTopBox =
+          adjustCollisionBox(o.topCollisionBoxes[0], obstacleBox);
+  
+        for (var i = 0; i < o.leftCollisionBoxes.length; i++) {
+          // 挡板左边的碰撞盒子
+          var paddleLeftBox =
+            adjustCollisionBox(o.leftCollisionBoxes[i], obstacleBox);
+          // 挡板右边的碰撞盒子
+          var paddleRightBox =
+            adjustCollisionBox(o.rightCollisionBoxes[i], obstacleBox);
+  
+          if (detectCollision(ballBox, paddleLeftBox, opt_canvas)) {
+            return 'left';
+          } else if (detectCollision(ballBox, paddleRightBox, opt_canvas)) {
+            return 'right';
+          }
         }
-      }
-
-      // 撞到挡板顶部
-      if (detectCollision(ballBox, paddleTopBox, opt_canvas)) {
-        return 'top';
+  
+        // 撞到挡板顶部
+        if (detectCollision(ballBox, paddleTopBox, opt_canvas)) {
+          return 'top';
+        }
       }
     }
   }
