@@ -155,8 +155,10 @@ Breakout.prototype = {
       this.paddle.update(isLeftMove, isRightMove);
 
       // 是否碰撞 第三个参数传入 canvas 进行 debug
-      // var pCollision = checkCollision(this.ball, this.paddle);
-      var pCollision = checkCollision(this.ball, this.paddle, this.canvas);
+      // var pCollision =
+        checkBallPaddleCollision(this.ball, this.paddle);
+      var pCollision =
+        checkBallPaddleCollision(this.ball, this.paddle, this.canvas);
 
       // 小球的垂直中心
       var ballCenter = this.ball.yPos + this.ball.dimensions.HEIGHT / 2;
