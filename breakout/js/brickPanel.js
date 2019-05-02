@@ -1,9 +1,9 @@
 /**
  * 砖块显示面板类
  * @param {HTMLCanvasElement} canvas 画布元素
- * @param {Number} currentLevel 当前关卡
+ * @param {Number} level 关卡
  */
-function BrickPanel(canvas, currentLevel) {
+function BrickPanel(canvas, level) {
   this.canvas = canvas;
   this.canvasCtx = canvas.getContext('2d');
 
@@ -14,12 +14,12 @@ function BrickPanel(canvas, currentLevel) {
 
   this.brickNum = 0; // 砖块的数目
 
-  this.init(currentLevel);
+  this.init(level);
 }
 
 BrickPanel.prototype = {
-  init: function (currentLevel) {
-    var level = levels[currentLevel - 1];
+  init: function (level) {
+    var level = levels[level - 1];
     var row = level.length;    // 砖块的行数
     var col = level[0].length; // 砖块的列数
 
@@ -32,23 +32,25 @@ BrickPanel.prototype = {
     for (var i = 0; i < level.length; i++) {
       for (var j = 0; j < level[i].length; j++) {
         // 关卡数组中存储的元素就是砖块的生命值
-        var brickLife = level[i][j];
         var brick = new Brick(this.canvas,
           Breakout.spriteDefinition.BRICK);
+        brick.life = level[i][j];
         
         // 统计本关卡砖块数目
-        if (brickLife) {
+        if (brick.life) {
           this.brickNum++;
         }
-        brick.life = brickLife;
         brick.xPos = this.xPos +
           (brick.dimensions.WIDTH + brick.gap) * j;
         brick.yPos = this.yPos +
           (brick.dimensions.HEIGHT + brick.gap) * i;
 
+        // 存储砖块
         this.bricks.push(brick);
       }
     }
+
+    this.draw();
   },
   update: function () {
     this.draw();
@@ -59,7 +61,9 @@ BrickPanel.prototype = {
     }
   },
   // 重置关卡
-  reset: function (currentLevel) {
-    this.init(currentLevel);
+  reset: function (level) {
+    this.bricks = [];
+    this.brickNum = 0;
+    this.init(level);
   },
 };

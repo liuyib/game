@@ -18,6 +18,8 @@ function Ball(canvas, spritePos) {
   this.speedX = 0;
   this.speedY = 0;
 
+  this.isDroped = false; // 小球是否落到地面
+
   this.init();
 }
 
@@ -41,7 +43,6 @@ Ball.prototype = {
   draw: function () {
     var sourceWidth = this.dimensions.WIDTH;
     var sourceHeight = this.dimensions.HEIGHT;
-
     var targetWidth = sourceWidth;
     var targetHeight = sourceHeight;
     
@@ -58,8 +59,6 @@ Ball.prototype = {
    * @return {Boolean}
    */
   update: function () {
-    var isDroped = false; // 小球是否落到地面
-
     this.xPos += this.speedX;
     this.yPos += this.speedY;
 
@@ -76,17 +75,17 @@ Ball.prototype = {
       this.speedY = Math.abs(this.speedY);
     }
     // 小球落到地面
-    if (this.yPos > 
+    if (this.yPos >=
       Breakout.dimensions.HEIGHT - this.dimensions.HEIGHT) {
-      isDroped = true;
+      this.isDroped = true;
     }
 
     this.draw();
-
-    return isDroped;
   },
   // 重置小球
   reset: function () {
+    this.isDroped = false;
+    
     this.speedX = this.config.SPEED;
     this.speedY = -this.config.SPEED;
 

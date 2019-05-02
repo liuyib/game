@@ -30,24 +30,26 @@ Paddle.config = {
 
 // 尺寸设置
 Paddle.dimensions = {
-  WIDTH: 80,
-  HEIGHT: 15,
+  WIDTH: 93,
+  HEIGHT: 14,
 };
 
 Paddle.prototype = {
   init: function () {
     this.topCollisionBoxes = [
-      new CollisionBox(4, 0, 72, 1),
+      new CollisionBox(5, 0, 83, 2), 
     ];
     this.leftCollisionBoxes = [
-      new CollisionBox(0, 3, 1, 4),
-      new CollisionBox(1, 2, 1, 5),
-      new CollisionBox(2, 1, 2, 6),
+      new CollisionBox(0, 5, 1, 2),
+      new CollisionBox(1, 3, 1, 4),
+      new CollisionBox(2, 2, 1, 5),
+      new CollisionBox(3, 1, 1, 6),
     ];
     this.rightCollisionBoxes = [
-      new CollisionBox(79, 3, 1, 4),
-      new CollisionBox(78, 5, 1, 5),
-      new CollisionBox(76, 7, 2, 6),
+      new CollisionBox(this.dimensions.WIDTH - 1, 5, 1, 2),
+      new CollisionBox(this.dimensions.WIDTH - 2, 3, 1, 4),
+      new CollisionBox(this.dimensions.WIDTH - 3, 2, 1, 5),
+      new CollisionBox(this.dimensions.WIDTH - 4, 1, 1, 6),
     ];
     this.xPos = (Breakout.dimensions.WIDTH - this.dimensions.WIDTH) / 2;
     this.yPos = Breakout.dimensions.HEIGHT -

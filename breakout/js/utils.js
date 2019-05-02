@@ -53,35 +53,30 @@ function checkBallPaddleCollision(ball, paddle, opt_canvas) {
   var ballBox = createCollisionBox(b);
   var paddleBox = createCollisionBox(p);
 
-  // 小球中心的位置高于挡板中心的位置时，小球会反弹
-  // 否则，小球不可能再反弹上去
-  if (ballBox.y + ballBox.h / 2 <
-    paddleBox.y + paddleBox.h / 2) {
-    // 先检测外层盒子，当外层盒子碰撞后，再检测内层，以此来优化性能
-    if (detectCollision(ballBox, paddleBox, opt_canvas)) {
-      // 根据挡板外层的碰撞盒子，调整内层盒子的位置
-      var pTopBox =
-        adjustCollisionBox(p.topCollisionBoxes[0], paddleBox);
+  // 先检测外层盒子，当外层盒子碰撞后，再检测内层，以此来优化性能
+  if (detectCollision(ballBox, paddleBox, opt_canvas)) {
+    // 根据挡板外层的碰撞盒子，调整内层盒子的位置
+    var pTopBox =
+      adjustCollisionBox(p.topCollisionBoxes[0], paddleBox);
 
-      for (var i = 0; i < p.leftCollisionBoxes.length; i++) {
-        // 挡板左边的碰撞盒子
-        var pLeftBox =
-          adjustCollisionBox(p.leftCollisionBoxes[i], paddleBox);
-        // 挡板右边的碰撞盒子
-        var pRightBox =
-          adjustCollisionBox(p.rightCollisionBoxes[i], paddleBox);
+    for (var i = 0; i < p.leftCollisionBoxes.length; i++) {
+      // 挡板左边的碰撞盒子
+      var pLeftBox =
+        adjustCollisionBox(p.leftCollisionBoxes[i], paddleBox);
+      // 挡板右边的碰撞盒子
+      var pRightBox =
+        adjustCollisionBox(p.rightCollisionBoxes[i], paddleBox);
 
-        if (detectCollision(ballBox, pLeftBox, opt_canvas)) {
-          return 'left';
-        } else if (detectCollision(ballBox, pRightBox, opt_canvas)) {
-          return 'right';
-        }
+      if (detectCollision(ballBox, pLeftBox, opt_canvas)) {
+        return 'left';
+      } else if (detectCollision(ballBox, pRightBox, opt_canvas)) {
+        return 'right';
       }
+    }
 
-      // 撞到挡板顶部
-      if (detectCollision(ballBox, pTopBox, opt_canvas)) {
-        return 'top';
-      }
+    // 撞到挡板顶部
+    if (detectCollision(ballBox, pTopBox, opt_canvas)) {
+      return 'top';
     }
   }
 
@@ -102,10 +97,10 @@ function checkBallBrickCollision(ball, brick, opt_canvas) {
 
       if (detectCollision(ballBox, adjustBox, opt_canvas)) {
         switch(i) {
-          case 0: return 'top'; break;
-          case 1: return 'right'; break;
-          case 2: return 'bottom'; break;
-          case 3: return 'left'; break;
+          case 0: log('top');return 'top'; break;
+          case 1: log('right');return 'right'; break;
+          case 2: log('bottom');return 'bottom'; break;
+          case 3: log('left');return 'left'; break;
         }
       }
     }

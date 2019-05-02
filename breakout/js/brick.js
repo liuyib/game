@@ -29,18 +29,19 @@ Brick.dimensions = {
   HEIGHT: 20,
 };
 
-// 不同砖块在雪碧图中的 y 坐标
-Brick.spriteYPos = [0, 22, 44, 66, 88];
+// 砖块在雪碧图中的位置（相对于第一个砖块）
+Brick.spriteYPos = [0, 22, 44, 66, 88, 110];
 
 Brick.prototype = {
   init: function () {
     this.gap = Breakout.config.BRICK_GAP;
-
+ 
+    var d = this.dimensions;
     this.collisionBoxes = [
-      new CollisionBox(1, 0, 48, 1),  // 上
-      new CollisionBox(49, 1, 1, 18), // 右
-      new CollisionBox(1, 19, 48, 1), // 下
-      new CollisionBox(0, 1, 1, 18),   // 左
+      new CollisionBox(2, 0, d.WIDTH - 4, 1),            // 上
+      new CollisionBox(d.WIDTH - 1, 2, 1, d.HEIGHT - 4), // 右
+      new CollisionBox(2, d.HEIGHT - 1, d.WIDTH - 4, 1), // 下
+      new CollisionBox(0, 2, 1, d.HEIGHT - 4),           // 左
     ];
   },
   draw: function () {
@@ -55,7 +56,7 @@ Brick.prototype = {
       this.canvasCtx.drawImage(
         Breakout.imageSprite,
         this.spritePos.x,
-        this.spritePos.y + Brick.spriteYPos[this.life],
+        this.spritePos.y + Brick.spriteYPos[this.life - 1],
         sourceWidth, sourceHeight,
         this.xPos, this.yPos,
         targetWidth, targetHeight
