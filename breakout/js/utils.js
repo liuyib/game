@@ -97,10 +97,10 @@ function checkBallBrickCollision(ball, brick, opt_canvas) {
 
       if (detectCollision(ballBox, adjustBox, opt_canvas)) {
         switch(i) {
-          case 0: log('top');return 'top'; break;
-          case 1: log('right');return 'right'; break;
-          case 2: log('bottom');return 'bottom'; break;
-          case 3: log('left');return 'left'; break;
+          case 0: return 'top'; break;
+          case 1: return 'right'; break;
+          case 2: return 'bottom'; break;
+          case 3: return 'left'; break;
         }
       }
     }
