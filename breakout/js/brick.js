@@ -8,6 +8,7 @@ function Brick(canvas, spritePos) {
   this.canvasCtx = canvas.getContext('2d');
   this.spritePos = spritePos;
   this.dimensions = Brick.dimensions;
+  this.config = Brick.config;
 
   // 坐标
   this.xPos = 0;
@@ -16,12 +17,18 @@ function Brick(canvas, spritePos) {
   // 碰撞盒子
   this.collisionBoxes = [];
 
-  this.life = 0;           // 砖块的生命值
-  this.isRemove = false;   // 是否被移除
-  this.gap = 0;            // 砖块之间的间隙
+  this.life = 0;         // 砖块的生命值
+  this.value = 0;        // 砖块的分值
+  this.isRemove = false; // 是否被移除
+  this.gap = 0;          // 砖块之间的间隙
 
   this.init();
 }
+
+Brick.config = {
+  BASIC_VALUE: 10,           // 砖块的基础分值
+  VALUE_INCRE_COEFFICIENT: 2, // 砖块分值的增长系数
+};
 
 // 尺寸设置
 Brick.dimensions = {
@@ -44,13 +51,14 @@ Brick.prototype = {
       new CollisionBox(0, 2, 1, d.HEIGHT - 4),           // 左
     ];
   },
+  // 绘制砖块
   draw: function () {
     var sourceWidth = this.dimensions.WIDTH;
     var sourceHeight = this.dimensions.HEIGHT;
 
     var targetWidth = sourceWidth;
     var targetHeight = sourceHeight;
-
+    
     // 砖块的生命值不为零
     if (this.life) {
       this.canvasCtx.drawImage(
@@ -62,5 +70,15 @@ Brick.prototype = {
         targetWidth, targetHeight
       );
     }
+  },
+  // 更新砖块的绘制和分值
+  update: function () {
+    this.updateValue();
+    this.draw();
+  },
+  // 更新砖块的分值
+  updateValue: function () {
+    this.value = this.life * Brick.config.BASIC_VALUE *
+      Brick.config.VALUE_INCRE_COEFFICIENT;
   },
 };

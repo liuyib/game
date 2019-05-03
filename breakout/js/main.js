@@ -9,24 +9,24 @@ function Breakout(containerElemId, opt_config) {
   this.gameContinerElem = document.querySelector(containerElemId);
   // canvas 的容器元素
   this.canvasContainerElem = null;
-  this.config = opt_config || Breakout.config;    // 游戏的配置参数
-  this.dimensions = Breakout.dimensions;          // 游戏的默认尺寸
+  this.config = opt_config || Breakout.config; // 游戏的配置参数
+  this.dimensions = Breakout.dimensions;       // 游戏的默认尺寸
 
-  this.isActivited = false;                       // 游戏是否激活
-  this.isPlayingIntro = false;                    // 是否正在执行开场动画
-  this.isPlaying = false;                         // 游戏是否开始
-  this.isPaused = false;                          // 游戏是否暂停
+  this.isActivited = false;                    // 游戏是否激活
+  this.isPlayingIntro = false;                 // 是否正在执行开场动画
+  this.isPlaying = false;                      // 游戏是否开始
+  this.isPaused = false;                       // 游戏是否暂停
 
-  this.keys = [];                                 // 存储按下的键
+  this.keys = [];                              // 存储按下的键
 
-  this.score = 0;                                 // 分数
-  this.level = 0;                                 // 关卡
-  this.playCount = 0;                             // 游戏次数
+  this.score = 0;                              // 分数
+  this.level = 0;                              // 关卡
+  this.playCount = 0;                          // 游戏次数
 
-  this.paddle = null;                             // 挡板
-  this.ball = null;                               // 小球
-  this.brickPanel = null;                         // 绘制砖块的区域
-  this.scene = null;                              // 场景（开始、结束面板，分数）
+  this.paddle = null;                          // 挡板
+  this.ball = null;                            // 小球
+  this.brickPanel = null;                      // 绘制砖块的区域
+  this.scene = null;                           // 场景（开始、结束面板，分数）
 
   // 加载图片资源并初始化游戏
   this.loadImage();
@@ -43,10 +43,10 @@ var FPS = 60;
 
 // 游戏的配置参数
 Breakout.config = {
-  PLAYER_LIFE: 3,            // 玩家每一关的生命值
-  PADDLE_BOTTOM_MARGIN: 20,  // 挡板距底部的距离
-  BRICK_GAP: 10,             // 砖块之间的间隔
-  BRICK_PANEL_MARGIN: 15,    // 砖块面板到画布边界的距离
+  PLAYER_LIFE: 3,           // 玩家每一关的生命值
+  PADDLE_BOTTOM_MARGIN: 20, // 挡板距底部的距离
+  BRICK_GAP: 10,            // 砖块之间的间隔
+  BRICK_PANEL_MARGIN: 15,   // 砖块面板到画布边界的距离
 };
 
 // 游戏的默认尺寸
@@ -57,18 +57,18 @@ Breakout.dimensions = {
 
 // 雪碧图信息
 Breakout.spriteDefinition = {
-  PADDLE: { x: 2, y: 156 },           // 挡板
-  BALL: { x: 112, y: 134 },           // 球
-  BRICK: { x: 2, y: 2 },              // 砖块
-  RESTART: { x: 134, y: 134 },        // 重新开始按钮
-  GAMEOVER_TEXT: { x: 2, y: 172 },    // Game Over 文字
+  PADDLE: { x: 2, y: 156 },        // 挡板
+  BALL: { x: 112, y: 134 },        // 球
+  BRICK: { x: 2, y: 2 },           // 砖块
+  RESTART: { x: 134, y: 134 },     // 重新开始按钮
+  GAMEOVER_TEXT: { x: 2, y: 172 }, // Game Over 文字
 };
 
 // 游戏中用到的 CSS 类名
 Breakout.classes = {
-  CANVAS_CONTINER: 'canvas-container',  // 画布容器
-  CANVAS: 'breakout-canvas',            // 游戏画布
-  ARCADE_MODE: 'arcade-mode',           // 街机模式
+  CANVAS_CONTINER: 'canvas-container', // 画布容器
+  CANVAS: 'breakout-canvas',           // 游戏画布
+  ARCADE_MODE: 'arcade-mode',          // 街机模式
 };
 
 // 游戏用到的键盘码
@@ -99,6 +99,9 @@ Breakout.prototype = {
     this.canvasCtx.fillStyle = '#f7f7f7';
     this.canvasCtx.fill();
 
+    // 关卡初始化为第一关
+    this.level = 1;
+
     // 初始化场景
     this.scene = new Scene(this.canvas,
       this.spriteDef.RESTART, this.spriteDef.GAMEOVER_TEXT);
@@ -108,9 +111,6 @@ Breakout.prototype = {
 
     // 初始化小球
     this.ball = new Ball(this.canvas, this.spriteDef.BALL);
-
-    // 关卡初始化为第一关
-    this.level = 1;
   
     // 初始化绘制砖块的区域
     this.brickPanel = new BrickPanel(this.canvas, this.level);
@@ -152,6 +152,9 @@ Breakout.prototype = {
       // 游戏结束
       if (this.ball.isDroped) {
         this.gameOver();
+
+        this.scene.drawGameOver(); // 绘制 Game Over
+        this.scene.drawButton();   // 绘制开始按钮
       }
 
       // 砖块数变为 0，进入下一关
@@ -164,18 +167,20 @@ Breakout.prototype = {
       // ----------------------------------------------
       var bricks = this.brickPanel.bricks;
       var brickCollision = ''; // 小球和砖块的碰撞部位
+      var brickValue = 0;      // 砖块的分值
 
       for (var i = 0; i < bricks.length; i++) {
         // 砖块生命值不为零时才会检测碰撞
         if (bricks[i].life) {
           brickCollision =
-            // checkBallBrickCollision(this.ball, bricks[i]);
-            checkBallBrickCollision(this.ball, bricks[i], this.canvas);
+            checkBallBrickCollision(this.ball, bricks[i]);
+            // checkBallBrickCollision(this.ball, bricks[i], this.canvas);
         }
 
         // 碰撞后，砖块生命值减一
         if (brickCollision != 'none' && bricks[i].life != 0) {
-          bricks[i].life--;
+          brickValue = bricks[i].value;
+          bricks[i].life--;   // 减少砖块的生命
 
           // 更新砖块数目
           if (bricks[i].life == 0) {
@@ -196,8 +201,8 @@ Breakout.prototype = {
       // ----------------------------------------------
       // 小球和挡板的碰撞部位（第三个参数传入 canvas 进行 debug）
       var pCollision =
-        // checkBallPaddleCollision(this.ball, this.paddle);
-        checkBallPaddleCollision(this.ball, this.paddle, this.canvas);
+        checkBallPaddleCollision(this.ball, this.paddle);
+        // checkBallPaddleCollision(this.ball, this.paddle, this.canvas);
 
       // 小球的垂直中心
       var ballCenter = this.ball.yPos + this.ball.dimensions.HEIGHT / 2;
@@ -217,6 +222,7 @@ Breakout.prototype = {
 
       // 小球没有掉落到地面
       if (!this.ball.isDroped) {
+        this.score += brickValue;
         // 进行下一次更新
         this.reqAFId = requestAnimationFrame(this.update.bind(this));
       }
@@ -340,9 +346,6 @@ Breakout.prototype = {
     this.stop();
     this.ball.isDroped = true;
     this.playCount++;
-
-    this.scene.drawGameOver(); // 绘制 Game Over
-    this.scene.drawButton();   // 绘制开始按钮
   },
   // 重置游戏参数
   reset: function () {
@@ -353,25 +356,25 @@ Breakout.prototype = {
   },
   // 重新开始游戏
   restart: function () {
-    // 本关游戏的次数已达上限
+    // 本关游戏的次数已达上限，游戏重置为第一关
     if (this.playCount == Breakout.config.PLAYER_LIFE) {
       this.score = 0;
       this.level = 1;
       this.playCount = 0;
-      this.brickPanel.reset(this.level);
+      this.brickPanel.reset(this.level); // 重置砖块为第一关
+      this.scene.reset();                // 重置分数和关卡
     }
 
-    this.keys = [];     // 存储按下的键
-    this.scene.reset();
-    this.reset();
+    this.keys = [];
+    this.reset();   // 重置小球和游戏参数
     this.update();
   },
   // 进入下一关
   toNextLevel: function () {
     this.level++;
     this.stop();
-    this.brickPanel.reset(this.level);
-    this.reset();
+    this.brickPanel.reset(this.level); // 重置砖块为下一关
+    this.reset();                      // 重置小球和游戏参数
   },
   // 清空画布
   clearCanvas: function () {

@@ -7,11 +7,10 @@ function BrickPanel(canvas, level) {
   this.canvas = canvas;
   this.canvasCtx = canvas.getContext('2d');
 
-  this.bricks = [];  // 存储砖块
-
   this.xPos = 0;
   this.yPos = 0;
 
+  this.bricks = [];  // 存储砖块
   this.brickNum = 0; // 砖块的数目
 
   this.init(level);
@@ -20,7 +19,6 @@ function BrickPanel(canvas, level) {
 BrickPanel.prototype = {
   init: function (level) {
     var level = levels[level - 1];
-    var row = level.length;    // 砖块的行数
     var col = level[0].length; // 砖块的列数
 
     // 砖块显示面板水平居中
@@ -35,7 +33,8 @@ BrickPanel.prototype = {
         var brick = new Brick(this.canvas,
           Breakout.spriteDefinition.BRICK);
         brick.life = level[i][j];
-        
+        brick.updateValue.bind(brick);
+
         // 统计本关卡砖块数目
         if (brick.life) {
           this.brickNum++;
@@ -50,10 +49,13 @@ BrickPanel.prototype = {
       }
     }
 
+    // 初始绘制砖块
     this.draw();
   },
   update: function () {
-    this.draw();
+    for (var i = 0; i < this.bricks.length; i++) {
+      this.bricks[i].update();
+    }
   },
   draw: function () {
     for (var i = 0; i < this.bricks.length; i++) {
