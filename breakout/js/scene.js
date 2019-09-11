@@ -15,6 +15,7 @@ function Scene(canvas, buttonSpritePos, gameOverSpritePos) {
   this.gameOverSpritePos = gameOverSpritePos;
 
   this.score = 0;      // 得分
+  this.life = 0;       // 生命值
   this.level = 0;      // 关卡
   this.gameOver = {};  // Game Over 文字
   this.button = {};    // 开始按钮
@@ -28,6 +29,8 @@ Scene.config = {
   SCORE_Y: 25,
   LEVEL_X: 510,        // 关卡文字的 x 坐标
   LEVEL_Y: 25,
+  LIFE_X: 260,         // 生命值的 x 坐标
+  LIFE_Y: 25,
 };
 
 Scene.dimensions = {
@@ -65,6 +68,12 @@ Scene.prototype = {
     this.canvasCtx.fillText(showScoreText,
       this.config.SCORE_X, this.config.SCORE_Y);
 
+    // 绘制生命值
+    var showLifeText = '生命：' + this.life;
+    this.canvasCtx.fillStyle = '#000';
+    this.canvasCtx.fillText(showLifeText,
+      this.config.LIFE_X, this.config.LIFE_Y);
+
     // 绘制关卡
     var showLevelText = '关卡：' + this.level;
     this.canvasCtx.fillStyle = '#000';
@@ -74,8 +83,9 @@ Scene.prototype = {
     this.canvasCtx.restore();
   },
   // 更新分数和关卡
-  update: function (score, level) {
+  update: function (score, life, level) {
     this.score = score;
+    this.life = life;
     this.level = level;
 
     this.draw();
@@ -107,6 +117,6 @@ Scene.prototype = {
     );
   },
   reset: function () {
-    this.update(0, 0);
+    this.update(0, 0, 0);
   },
 };

@@ -1,5 +1,3 @@
-log = console.log.bind(console);
-
 /**
  * 生成 canvas 元素
  * @param {HTMLElement} container HTML 元素
@@ -213,4 +211,8 @@ function detectCollision(circleBox, rectBox, opt_canvas) {
 // 计算两点间的距离
 function distance(x1, y1, x2, y2) {
   return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+function randomNum(min, max) {
+  return Math.random() * (max - min) + min;
 }

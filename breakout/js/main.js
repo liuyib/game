@@ -20,6 +20,7 @@ function Breakout(containerElemId, opt_config) {
   this.keys = [];                              // 存储按下的键
 
   this.score = 0;                              // 分数
+  this.life = 0;                               // 生命值
   this.level = 0;                              // 关卡
   this.playCount = 0;                          // 游戏次数
 
@@ -43,7 +44,7 @@ var FPS = 60;
 
 // 游戏的配置参数
 Breakout.config = {
-  PLAYER_LIFE: 3,           // 玩家每一关的生命值
+  PLAYER_LIFE: 3,           // 玩家的初始生命值
   PADDLE_BOTTOM_MARGIN: 20, // 挡板距底部的距离
   BRICK_GAP: 10,            // 砖块之间的间隔
   BRICK_PANEL_MARGIN: 15,   // 砖块面板到画布边界的距离
@@ -101,6 +102,8 @@ Breakout.prototype = {
 
     // 关卡初始化为第一关
     this.level = 1;
+    // 初始化生命值
+    this.life = Breakout.config.PLAYER_LIFE;
 
     // 初始化场景
     this.scene = new Scene(this.canvas,
@@ -145,7 +148,7 @@ Breakout.prototype = {
       var isRightMove = Breakout.keyCodes.RIGHT[currentKeyCode];
       
       this.paddle.update(isLeftMove, isRightMove);
-      this.scene.update(this.score, this.level);
+      this.scene.update(this.score, this.life, this.level);
       this.brickPanel.update();
       this.ball.update();
 
@@ -208,15 +211,21 @@ Breakout.prototype = {
       var ballCenter = this.ball.yPos + this.ball.dimensions.HEIGHT / 2;
       // 挡板的垂直中心
       var paddleCenter = this.paddle.yPos + this.paddle.dimensions.HEIGHT / 2;
+      var CORRECT_NUM = 0.5;
+      var speedCorrected = parseInt(randomNum(-CORRECT_NUM, CORRECT_NUM) * 100) / 100;
+      var newSpeedY = -Math.abs(this.ball.speedY);
+      var newSpeedX = -Math.abs(Ball.config.SPEED + speedCorrected);
 
       if (pCollision == 'top') {
         this.ball.speedY = -Math.abs(this.ball.speedY);
-      } else if (pCollision == 'left' && ballCenter < paddleCenter) {
-        this.ball.speedX = -Math.abs(this.ball.speedX);
-        this.ball.speedY = -Math.abs(this.ball.speedY);
+      }
+      // 碰到挡板两侧，速度并不会按照原路线反弹，而是进行了一定的改变（增加小球运动的不可预性）
+      else if (pCollision == 'left' && ballCenter < paddleCenter) {
+        this.ball.speedX = newSpeedX;
+        this.ball.speedY = newSpeedY;
       } else if (pCollision == 'right' && ballCenter < paddleCenter) {
-        this.ball.speedX = Math.abs(this.ball.speedX);
-        this.ball.speedY = -Math.abs(this.ball.speedY);
+        this.ball.speedX = -newSpeedX;
+        this.ball.speedY = newSpeedY;
       }
       // ----------------------------------------------
 
@@ -274,6 +283,7 @@ Breakout.prototype = {
 
     // 小球落到地面
     if (this.ball.isDroped && Breakout.keyCodes.START[e.keyCode]) {
+      this.life--;
       this.restart();
     }
   },
@@ -359,6 +369,7 @@ Breakout.prototype = {
     // 本关游戏的次数已达上限，游戏重置为第一关
     if (this.playCount == Breakout.config.PLAYER_LIFE) {
       this.score = 0;
+      this.life = Breakout.config.PLAYER_LIFE;
       this.level = 1;
       this.playCount = 0;
       this.brickPanel.reset(this.level); // 重置砖块为第一关
